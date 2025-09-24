@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  nocodb-postgres:
+    image: postgres:14
+    container_name: techLEAD-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: techleaddb123
+      POSTGRES_DB: nocodb
+    volumes:
+      - nocodb-postgres-data:/var/lib/postgresql/data
+    networks:
+      - technet
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nocodb:
+    image: nocodb/nocodb:latest
+    container_name: techLEAD-nocodb
+    ports:
+      - "8080:8080"
+    environment:
+      NC_DB: "pg://nocodb-postgres:5432?u=postgres&p=techleaddb123&d=nocodb"
+      NC_AUTH_JWT_SECRET: "your-secret-jwt-key-here"
+    depends_on:
+      nocodb-postgres:
+        condition: service_healthy
+    networks:
+      - technet
+    restart: unless-stopped
+    volumes:
+      - nocodb-data:/usr/app/data
+
+networks:
+  technet:
+    driver: bridge
+
+volumes:
+  nocodb-postgres-data:
+  nocodb-data:

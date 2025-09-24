@@ -1,0 +1,61 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+docker-volumes/
+*.volume
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# n8n
+n8n-data/
+*.n8n
+
+# NocoDB
+nocodb-data/
+
+# Backup files
+*.backup
+*.bak
+backup/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Credentials
+credentials.json
+secrets.yaml
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Test outputs
+test-results/
+coverage/
