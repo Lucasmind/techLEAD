@@ -1,0 +1,301 @@
+{
+  "name": "Tech LEAD - Main Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "30 Minute Cycle",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "list",
+        "tableId": "projects_table",
+        "filters": {
+          "conditions": [
+            {
+              "field": "status",
+              "value": "active"
+            }
+          ]
+        }
+      },
+      "id": "fetch-projects",
+      "name": "Fetch Active Projects",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "issue",
+        "operation": "getAll",
+        "owner": "={{ $json.repository_url.split('/')[3] }}",
+        "repository": "={{ $json.repository_url.split('/')[4] }}",
+        "state": "open",
+        "returnAll": true
+      },
+      "id": "fetch-issues",
+      "name": "Fetch GitHub Issues",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "command": "echo '{{ JSON.stringify($json) }}' | claude --prompt \"You are Tech LEAD, an intelligent orchestrator for GitHub development. Analyze these open issues and select the most appropriate one to work on next. Consider priority, complexity, dependencies, and project goals. Return JSON with: {selected_issue: number, reasoning: string, estimated_hours: number}\"",
+        "outputFormat": "json"
+      },
+      "id": "claude-decision",
+      "name": "Claude Decision - Select Issue",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "create",
+        "tableId": "decisions_log",
+        "data": {
+          "project_id": "={{ $node['fetch-projects'].json.id }}",
+          "decision_type": "issue_selection",
+          "claude_input": "={{ JSON.stringify($node['fetch-issues'].json) }}",
+          "claude_output": "={{ JSON.stringify($json) }}",
+          "execution_status": "pending"
+        }
+      },
+      "id": "log-decision",
+      "name": "Log Decision to NocoDB",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['fetch-projects'].json.telegram_chat_id }}",
+        "text": "🤖 Tech LEAD Decision:\n\nSelected Issue: #{{ $json.selected_issue }}\nReasoning: {{ $json.reasoning }}\nEstimated Hours: {{ $json.estimated_hours }}\n\nApprove this selection?\n/approve or /reject",
+        "replyMarkup": {
+          "inlineKeyboard": {
+            "keyboard": [
+              [
+                {
+                  "text": "✅ Approve",
+                  "callbackData": "approve_{{ $json.selected_issue }}"
+                },
+                {
+                  "text": "❌ Reject",
+                  "callbackData": "reject_{{ $json.selected_issue }}"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "telegram-approval",
+      "name": "Telegram - PM Approval",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.approved }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-approval",
+      "name": "Check Approval",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/{{ $node['fetch-projects'].json.repository_url.split('/')[3] }}/{{ $node['fetch-projects'].json.repository_url.split('/')[4] }}/actions/workflows/claude.yml/dispatches",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ref",
+              "value": "main"
+            },
+            {
+              "name": "inputs",
+              "value": {
+                "issue_number": "={{ $node['claude-decision'].json.selected_issue }}",
+                "instructions": "Implement this issue following best practices"
+              }
+            }
+          ]
+        }
+      },
+      "id": "trigger-claude",
+      "name": "Trigger @claude Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1650, 250]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "work_log",
+        "id": "={{ $json.id }}",
+        "data": {
+          "status": "running",
+          "started_at": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "update-work-log",
+      "name": "Update Work Log",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1850, 250]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['fetch-projects'].json.telegram_chat_id }}",
+        "text": "❌ Selection rejected. Will retry in next cycle."
+      },
+      "id": "rejection-message",
+      "name": "Send Rejection Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1650, 350]
+    }
+  ],
+  "connections": {
+    "30 Minute Cycle": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Projects": {
+      "main": [
+        [
+          {
+            "node": "Fetch GitHub Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitHub Issues": {
+      "main": [
+        [
+          {
+            "node": "Claude Decision - Select Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Decision - Select Issue": {
+      "main": [
+        [
+          {
+            "node": "Log Decision to NocoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Decision to NocoDB": {
+      "main": [
+        [
+          {
+            "node": "Telegram - PM Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram - PM Approval": {
+      "main": [
+        [
+          {
+            "node": "Check Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approval": {
+      "main": [
+        [
+          {
+            "node": "Trigger @claude Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Rejection Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger @claude Workflow": {
+      "main": [
+        [
+          {
+            "node": "Update Work Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "main-orchestrator"
+}

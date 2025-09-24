@@ -1,0 +1,248 @@
+{
+  "name": "Tech LEAD - Issue Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "cron-5min",
+      "name": "5 Minute Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "list",
+        "tableId": "work_log",
+        "filters": {
+          "conditions": [
+            {
+              "field": "status",
+              "value": "running"
+            },
+            {
+              "field": "github_workflow",
+              "value": "claude"
+            }
+          ]
+        }
+      },
+      "id": "fetch-running-work",
+      "name": "Fetch Running Work",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/{{ $json.repository_url.split('/')[3] }}/{{ $json.repository_url.split('/')[4] }}/actions/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "event",
+              "value": "workflow_dispatch"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            }
+          ]
+        }
+      },
+      "id": "check-workflow-status",
+      "name": "Check Workflow Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.workflow_runs[0].conclusion }}",
+              "operation": "equals",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-success",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/{{ $node['fetch-running-work'].json.repository_url.split('/')[3] }}/{{ $node['fetch-running-work'].json.repository_url.split('/')[4] }}/actions/workflows/claude-test.yml/dispatches",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "ref",
+              "value": "main"
+            },
+            {
+              "name": "inputs",
+              "value": {
+                "issue_number": "={{ $node['fetch-running-work'].json.issue_number }}",
+                "branch_name": "claude/issue-{{ $node['fetch-running-work'].json.issue_number }}",
+                "attempt": 1
+              }
+            }
+          ]
+        }
+      },
+      "id": "trigger-tests",
+      "name": "Trigger @claude-test",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 250]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "work_log",
+        "id": "={{ $node['fetch-running-work'].json.id }}",
+        "data": {
+          "status": "testing",
+          "github_workflow": "claude-test"
+        }
+      },
+      "id": "update-to-testing",
+      "name": "Update to Testing",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 250]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['fetch-running-work'].json.telegram_chat_id }}",
+        "text": "⚠️ @claude implementation failed for issue #{{ $node['fetch-running-work'].json.issue_number }}\n\nError: {{ $json.workflow_runs[0].conclusion }}\n\nPlease review the logs and provide guidance."
+      },
+      "id": "notify-failure",
+      "name": "Notify PM of Failure",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1050, 350]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "work_log",
+        "id": "={{ $node['fetch-running-work'].json.id }}",
+        "data": {
+          "status": "failed",
+          "error_message": "{{ $json.workflow_runs[0].conclusion }}",
+          "completed_at": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "mark-failed",
+      "name": "Mark as Failed",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 350]
+    }
+  ],
+  "connections": {
+    "5 Minute Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Running Work",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Running Work": {
+      "main": [
+        [
+          {
+            "node": "Check Workflow Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Workflow Status": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Trigger @claude-test",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify PM of Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger @claude-test": {
+      "main": [
+        [
+          {
+            "node": "Update to Testing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify PM of Failure": {
+      "main": [
+        [
+          {
+            "node": "Mark as Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "issue-monitor"
+}

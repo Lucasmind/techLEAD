@@ -1,0 +1,202 @@
+{
+  "name": "Tech LEAD - Claude Execution Helper",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate input parameters\nconst input = $input.first().json;\n\nif (!input.prompt) {\n  throw new Error('Prompt is required');\n}\n\nif (!input.context) {\n  input.context = {};\n}\n\nif (!input.outputFormat) {\n  input.outputFormat = 'json';\n}\n\nreturn {\n  prompt: input.prompt,\n  context: input.context,\n  outputFormat: input.outputFormat,\n  role: input.role || 'Tech LEAD',\n  task: input.task || 'general'\n};"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Claude prompt with context\nconst { prompt, context, role, task } = $input.first().json;\n\nlet systemPrompt = `You are ${role}, an intelligent technical leader and orchestrator.`;\n\nif (task === 'issue_selection') {\n  systemPrompt += `\\n\\nYour task is to analyze GitHub issues and select the most appropriate one to work on next.`;\n  systemPrompt += `\\nConsider: priority labels, issue age, complexity, dependencies, and project goals.`;\n  systemPrompt += `\\nReturn JSON format: {selected_issue: number, reasoning: string, estimated_hours: number, priority: 'high'|'medium'|'low'}`;\n} else if (task === 'review_filter') {\n  systemPrompt += `\\n\\nYour task is to analyze code review feedback and extract actionable items.`;\n  systemPrompt += `\\nIdentify critical issues that must be addressed vs suggestions.`;\n  systemPrompt += `\\nReturn JSON format: {needs_changes: boolean, critical_issues: [], suggestions: [], ready_to_merge: boolean}`;\n} else if (task === 'error_analysis') {\n  systemPrompt += `\\n\\nYour task is to analyze error messages and suggest solutions.`;\n  systemPrompt += `\\nProvide clear, actionable steps to resolve the issue.`;\n  systemPrompt += `\\nReturn JSON format: {error_type: string, likely_cause: string, suggested_fix: string, commands: []}`;\n}\n\nconst fullPrompt = {\n  system: systemPrompt,\n  context: JSON.stringify(context),\n  user_prompt: prompt,\n  output_format: $input.first().json.outputFormat\n};\n\nreturn fullPrompt;"
+      },
+      "id": "build-prompt",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "command": "echo '{{ JSON.stringify($json) }}' | claude --format {{ $json.output_format }}",
+        "outputFormat": "={{ $json.output_format }}"
+      },
+      "id": "execute-claude",
+      "name": "Execute Claude CLI",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and validate Claude response\nconst response = $input.first().json;\nconst outputFormat = $node['validate-input'].json.outputFormat;\n\nlet parsedResponse;\n\nif (outputFormat === 'json') {\n  try {\n    // If response is already JSON\n    if (typeof response === 'object') {\n      parsedResponse = response;\n    } else if (typeof response === 'string') {\n      parsedResponse = JSON.parse(response);\n    } else if (response.output) {\n      parsedResponse = JSON.parse(response.output);\n    }\n  } catch (error) {\n    throw new Error(`Failed to parse Claude JSON response: ${error.message}`);\n  }\n} else {\n  // Text response\n  parsedResponse = response.output || response;\n}\n\n// Add metadata\nreturn {\n  success: true,\n  task: $node['validate-input'].json.task,\n  response: parsedResponse,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "create",
+        "tableId": "decisions_log",
+        "data": {
+          "decision_type": "={{ $node['validate-input'].json.task }}",
+          "claude_input": "={{ JSON.stringify($node['build-prompt'].json) }}",
+          "claude_output": "={{ JSON.stringify($json.response) }}",
+          "execution_status": "completed",
+          "timestamp": "={{ $json.timestamp }}"
+        }
+      },
+      "id": "log-to-db",
+      "name": "Log to Database",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return formatted result\nconst result = $node['parse-response'].json;\n\nreturn {\n  success: result.success,\n  data: result.response,\n  metadata: {\n    task: result.task,\n    timestamp: result.timestamp,\n    logged: true\n  }\n};"
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handler\nconst error = $input.first().json.error || $input.first().json;\n\n// Log error to database\nreturn {\n  success: false,\n  error: {\n    message: error.message || 'Unknown error',\n    stack: error.stack,\n    timestamp: new Date().toISOString()\n  },\n  recovery_suggestions: [\n    'Check Claude CLI authentication',\n    'Verify input format',\n    'Check network connectivity',\n    'Review Claude API limits'\n  ]\n};"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 450]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "create",
+        "tableId": "decisions_log",
+        "data": {
+          "decision_type": "error",
+          "claude_input": "={{ JSON.stringify($node['build-prompt'].json) }}",
+          "claude_output": "={{ JSON.stringify($json.error) }}",
+          "execution_status": "failed",
+          "error_message": "={{ $json.error.message }}",
+          "timestamp": "={{ $json.error.timestamp }}"
+        }
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 450]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Prompt": {
+      "main": [
+        [
+          {
+            "node": "Execute Claude CLI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Claude CLI": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Log to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Database": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "claude-execution-helper"
+}

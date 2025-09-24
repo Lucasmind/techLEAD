@@ -1,0 +1,120 @@
+name: Claude Implementation
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to work on'
+        required: true
+        type: number
+      instructions:
+        description: 'Additional instructions for Claude'
+        required: false
+        type: string
+
+jobs:
+  claude-implementation:
+    if: |
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '@claude') &&
+       github.event.issue.pull_request == null) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude CLI
+        run: |
+          npm install -g @anthropic-ai/claude-cli
+
+      - name: Get issue details
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ISSUE_NUMBER=${{ github.event.inputs.issue_number }}
+          else
+            ISSUE_NUMBER=${{ github.event.issue.number }}
+          fi
+
+          ISSUE_DATA=$(gh api repos/${{ github.repository }}/issues/${ISSUE_NUMBER})
+          echo "number=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+          echo "title=$(echo "$ISSUE_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
+          echo "body=$(echo "$ISSUE_DATA" | jq -r '.body')" >> $GITHUB_OUTPUT
+
+      - name: Create working branch
+        run: |
+          BRANCH_NAME="claude/issue-${{ steps.issue.outputs.number }}"
+          git checkout -b $BRANCH_NAME
+          git config --local user.email "claude@anthropic.com"
+          git config --local user.name "Claude AI"
+
+      - name: Execute Claude implementation
+        id: claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          ADDITIONAL_INSTRUCTIONS: ${{ github.event.inputs.instructions }}
+        run: |
+          # Prepare Claude prompt
+          PROMPT="You are implementing issue #${{ steps.issue.outputs.number }}: ${ISSUE_TITLE}
+
+          Issue Description:
+          ${ISSUE_BODY}
+
+          ${ADDITIONAL_INSTRUCTIONS:+Additional Instructions: ${ADDITIONAL_INSTRUCTIONS}}
+
+          Please implement the necessary changes to resolve this issue. Follow the project's coding standards and best practices."
+
+          # Execute Claude (placeholder - actual implementation depends on Claude CLI setup)
+          echo "Executing Claude implementation..."
+          # claude execute --prompt "$PROMPT" --output implementation.log
+
+          # For now, create a placeholder implementation
+          echo "# Implementation for Issue #${{ steps.issue.outputs.number }}" > implementation.md
+          echo "Claude implementation would go here" >> implementation.md
+
+      - name: Commit changes
+        run: |
+          git add -A
+          git commit -m "Implement issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          BRANCH_NAME="claude/issue-${{ steps.issue.outputs.number }}"
+          git push origin $BRANCH_NAME
+
+      - name: Update issue status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ steps.issue.outputs.number }} \
+            --body "✅ @claude has completed the implementation for this issue.
+
+            Branch: \`claude/issue-${{ steps.issue.outputs.number }}\`
+
+            Next steps:
+            1. @claude-test will run tests
+            2. PR will be created if tests pass
+            3. @claude-review will review the changes"
+
+      - name: Trigger tests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run claude-test.yml \
+            -f issue_number=${{ steps.issue.outputs.number }} \
+            -f branch_name=claude/issue-${{ steps.issue.outputs.number }}

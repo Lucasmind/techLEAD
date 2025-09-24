@@ -1,0 +1,186 @@
+name: Claude Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number being tested'
+        required: true
+        type: number
+      branch_name:
+        description: 'Branch to test'
+        required: true
+        type: string
+      attempt:
+        description: 'Test attempt number'
+        required: false
+        type: number
+        default: 1
+
+jobs:
+  test-implementation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up test environment
+        run: |
+          # Set up based on project requirements
+          if [ -f "package.json" ]; then
+            echo "Setting up Node.js environment"
+            npm install
+          elif [ -f "requirements.txt" ]; then
+            echo "Setting up Python environment"
+            pip install -r requirements.txt
+          elif [ -f "go.mod" ]; then
+            echo "Setting up Go environment"
+            go mod download
+          fi
+
+      - name: Run linting
+        id: lint
+        continue-on-error: true
+        run: |
+          # Run appropriate linter
+          if [ -f "package.json" ]; then
+            npm run lint || echo "LINT_FAILED=true" >> $GITHUB_ENV
+          elif [ -f ".flake8" ] || [ -f "setup.cfg" ] || [ -f "pyproject.toml" ]; then
+            flake8 . || echo "LINT_FAILED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: |
+          # Run project tests
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            npm test || echo "TESTS_FAILED=true" >> $GITHUB_ENV
+          elif [ -d "tests" ] || [ -d "test" ]; then
+            if [ -f "pytest.ini" ] || [ -f "setup.cfg" ]; then
+              pytest || echo "TESTS_FAILED=true" >> $GITHUB_ENV
+            fi
+          elif [ -f "go.mod" ]; then
+            go test ./... || echo "TESTS_FAILED=true" >> $GITHUB_ENV
+          else
+            echo "No tests found, skipping test step"
+          fi
+
+      - name: Run type checking
+        id: typecheck
+        continue-on-error: true
+        run: |
+          # Run type checking if available
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit || echo "TYPECHECK_FAILED=true" >> $GITHUB_ENV
+          elif [ -f "mypy.ini" ] || [ -f "setup.cfg" ]; then
+            mypy . || echo "TYPECHECK_FAILED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Evaluate test results
+        id: evaluate
+        run: |
+          FAILED=false
+          FAILURES=""
+
+          if [ "$LINT_FAILED" = "true" ]; then
+            FAILED=true
+            FAILURES="${FAILURES}- Linting failed\n"
+          fi
+
+          if [ "$TESTS_FAILED" = "true" ]; then
+            FAILED=true
+            FAILURES="${FAILURES}- Tests failed\n"
+          fi
+
+          if [ "$TYPECHECK_FAILED" = "true" ]; then
+            FAILED=true
+            FAILURES="${FAILURES}- Type checking failed\n"
+          fi
+
+          if [ "$FAILED" = "true" ]; then
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "failures<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$FAILURES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "status=passed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Handle test failure
+        if: steps.evaluate.outputs.status == 'failed' && github.event.inputs.attempt < 5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ATTEMPT=${{ github.event.inputs.attempt }}
+          NEXT_ATTEMPT=$((ATTEMPT + 1))
+
+          # Comment on issue about failure
+          gh issue comment ${{ github.event.inputs.issue_number }} \
+            --body "⚠️ @claude-test attempt #${ATTEMPT} failed:
+
+            ${{ steps.evaluate.outputs.failures }}
+
+            Attempting to fix issues (attempt ${NEXT_ATTEMPT}/5)..."
+
+          # Trigger Claude to fix issues
+          gh workflow run claude.yml \
+            -f issue_number=${{ github.event.inputs.issue_number }} \
+            -f instructions="Fix the following test failures:\n${{ steps.evaluate.outputs.failures }}"
+
+          # Wait and re-run tests
+          sleep 60
+          gh workflow run claude-test.yml \
+            -f issue_number=${{ github.event.inputs.issue_number }} \
+            -f branch_name=${{ github.event.inputs.branch_name }} \
+            -f attempt=${NEXT_ATTEMPT}
+
+      - name: Tests passed - Create PR
+        if: steps.evaluate.outputs.status == 'passed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create pull request
+          PR_URL=$(gh pr create \
+            --title "Fix: Issue #${{ github.event.inputs.issue_number }}" \
+            --body "## Summary
+
+            This PR implements the solution for issue #${{ github.event.inputs.issue_number }}.
+
+            ## Changes
+            - Implementation by @claude
+            - Tests passing ✅
+
+            ## Test Results
+            - Linting: ✅ Passed
+            - Tests: ✅ Passed
+            - Type checking: ✅ Passed
+
+            Closes #${{ github.event.inputs.issue_number }}" \
+            --base main \
+            --head ${{ github.event.inputs.branch_name }})
+
+          echo "PR created: $PR_URL"
+
+          # Update issue
+          gh issue comment ${{ github.event.inputs.issue_number }} \
+            --body "✅ All tests passed! PR created: $PR_URL
+
+            @claude-review will automatically review the changes."
+
+      - name: Max attempts reached
+        if: steps.evaluate.outputs.status == 'failed' && github.event.inputs.attempt >= 5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.inputs.issue_number }} \
+            --body "❌ @claude-test failed after 5 attempts.
+
+            Final failures:
+            ${{ steps.evaluate.outputs.failures }}
+
+            Manual intervention required. Please review the implementation on branch \`${{ github.event.inputs.branch_name }}\`."

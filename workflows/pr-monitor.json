@@ -1,0 +1,334 @@
+{
+  "name": "Tech LEAD - PR Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "cron-10min",
+      "name": "10 Minute Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "list",
+        "tableId": "work_log",
+        "filters": {
+          "conditions": [
+            {
+              "field": "pr_number",
+              "operation": "isNotNull"
+            },
+            {
+              "field": "status",
+              "value": "reviewing"
+            }
+          ]
+        }
+      },
+      "id": "fetch-prs-reviewing",
+      "name": "Fetch PRs Being Reviewed",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "pullRequest",
+        "operation": "get",
+        "owner": "={{ $json.repository_url.split('/')[3] }}",
+        "repository": "={{ $json.repository_url.split('/')[4] }}",
+        "pullRequestNumber": "={{ $json.pr_number }}"
+      },
+      "id": "get-pr-details",
+      "name": "Get PR Details",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "operation": "getAll",
+        "owner": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[3] }}",
+        "repository": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[4] }}",
+        "pullRequestNumber": "={{ $node['fetch-prs-reviewing'].json.pr_number }}",
+        "returnAll": true
+      },
+      "id": "get-pr-reviews",
+      "name": "Get PR Reviews",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if @claude-review has reviewed\nconst reviews = $input.all();\nconst claudeReview = reviews.find(r => \n  r.json.user && \n  r.json.user.login === 'github-actions[bot]' && \n  r.json.body && \n  r.json.body.includes('@claude-review')\n);\n\nif (claudeReview) {\n  return {\n    reviewed: true,\n    state: claudeReview.json.state,\n    body: claudeReview.json.body\n  };\n} else {\n  return {\n    reviewed: false\n  };\n}"
+      },
+      "id": "check-claude-review",
+      "name": "Check Claude Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.reviewed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "has-review",
+      "name": "Has Review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "command": "echo '{{ JSON.stringify($node['check-claude-review'].json) }}' | claude --prompt \"You are Tech LEAD. Analyze this code review from @claude-review. Extract key issues that need addressing. Return JSON: {needs_changes: boolean, critical_issues: [], suggestions: [], ready_to_merge: boolean}\"",
+        "outputFormat": "json"
+      },
+      "id": "claude-filter-review",
+      "name": "Claude Filter Review",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1450, 250]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['fetch-prs-reviewing'].json.telegram_chat_id }}",
+        "text": "📋 PR Review for #{{ $node['fetch-prs-reviewing'].json.pr_number }}\n\n{{ $json.needs_changes ? '🔄 Changes Required' : '✅ Ready to Merge' }}\n\nCritical Issues:\n{{ $json.critical_issues.join('\\n- ') }}\n\nSuggestions:\n{{ $json.suggestions.join('\\n- ') }}\n\nApprove merge?",
+        "replyMarkup": {
+          "inlineKeyboard": {
+            "keyboard": [
+              [
+                {
+                  "text": "✅ Merge",
+                  "callbackData": "merge_pr_{{ $node['fetch-prs-reviewing'].json.pr_number }}"
+                },
+                {
+                  "text": "🔧 Request Changes",
+                  "callbackData": "changes_pr_{{ $node['fetch-prs-reviewing'].json.pr_number }}"
+                },
+                {
+                  "text": "⏸️ Hold",
+                  "callbackData": "hold_pr_{{ $node['fetch-prs-reviewing'].json.pr_number }}"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "notify-pm-review",
+      "name": "Notify PM for Review",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1650, 250]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "operation": "equals",
+              "value2": "merge"
+            }
+          ]
+        }
+      },
+      "id": "check-pm-decision",
+      "name": "Check PM Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1850, 250]
+    },
+    {
+      "parameters": {
+        "resource": "pullRequest",
+        "operation": "merge",
+        "owner": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[3] }}",
+        "repository": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[4] }}",
+        "pullRequestNumber": "={{ $node['fetch-prs-reviewing'].json.pr_number }}",
+        "mergeMethod": "squash"
+      },
+      "id": "merge-pr",
+      "name": "Merge PR",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [2050, 200]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "work_log",
+        "id": "={{ $node['fetch-prs-reviewing'].json.id }}",
+        "data": {
+          "status": "completed",
+          "completed_at": "={{ new Date().toISOString() }}"
+        }
+      },
+      "id": "mark-completed",
+      "name": "Mark Completed",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [2250, 200]
+    },
+    {
+      "parameters": {
+        "resource": "issueComment",
+        "operation": "create",
+        "owner": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[3] }}",
+        "repository": "={{ $node['fetch-prs-reviewing'].json.repository_url.split('/')[4] }}",
+        "issueNumber": "={{ $node['fetch-prs-reviewing'].json.issue_number }}",
+        "body": "🔄 PM requested changes to PR #{{ $node['fetch-prs-reviewing'].json.pr_number }}\n\nChanges needed:\n{{ $node['claude-filter-review'].json.critical_issues.join('\\n- ') }}\n\n@claude please address these issues."
+      },
+      "id": "request-changes",
+      "name": "Request Changes",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [2050, 300]
+    }
+  ],
+  "connections": {
+    "10 Minute Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch PRs Being Reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PRs Being Reviewed": {
+      "main": [
+        [
+          {
+            "node": "Get PR Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PR Details": {
+      "main": [
+        [
+          {
+            "node": "Get PR Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PR Reviews": {
+      "main": [
+        [
+          {
+            "node": "Check Claude Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Claude Review": {
+      "main": [
+        [
+          {
+            "node": "Has Review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Review?": {
+      "main": [
+        [
+          {
+            "node": "Claude Filter Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Claude Filter Review": {
+      "main": [
+        [
+          {
+            "node": "Notify PM for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify PM for Review": {
+      "main": [
+        [
+          {
+            "node": "Check PM Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check PM Decision": {
+      "main": [
+        [
+          {
+            "node": "Merge PR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge PR": {
+      "main": [
+        [
+          {
+            "node": "Mark Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "pr-monitor"
+}

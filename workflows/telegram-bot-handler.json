@@ -1,0 +1,430 @@
+{
+  "name": "Tech LEAD - Telegram Bot Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "telegram-bot-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Telegram message\nconst update = $input.first().json;\nlet messageType = 'unknown';\nlet chatId = null;\nlet text = '';\nlet callbackData = '';\nlet userId = null;\n\nif (update.message) {\n  messageType = 'message';\n  chatId = update.message.chat.id;\n  text = update.message.text || '';\n  userId = update.message.from.id;\n} else if (update.callback_query) {\n  messageType = 'callback';\n  chatId = update.callback_query.message.chat.id;\n  callbackData = update.callback_query.data;\n  userId = update.callback_query.from.id;\n}\n\nreturn {\n  messageType,\n  chatId,\n  text,\n  callbackData,\n  userId,\n  original: update\n};"
+      },
+      "id": "parse-message",
+      "name": "Parse Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.messageType }}",
+              "operation": "equals",
+              "value2": "message"
+            }
+          ]
+        }
+      },
+      "id": "is-message",
+      "name": "Is Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Route commands\nconst text = $input.first().json.text;\nconst chatId = $input.first().json.chatId;\n\nif (text.startsWith('/status')) {\n  return { command: 'status', chatId };\n} else if (text.startsWith('/pause')) {\n  return { command: 'pause', chatId };\n} else if (text.startsWith('/resume')) {\n  return { command: 'resume', chatId };\n} else if (text.startsWith('/projects')) {\n  return { command: 'projects', chatId };\n} else if (text.startsWith('/help')) {\n  return { command: 'help', chatId };\n} else {\n  // Natural language query\n  return { command: 'natural', text, chatId };\n}"
+      },
+      "id": "route-commands",
+      "name": "Route Commands",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 250]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle callback buttons\nconst data = $input.first().json.callbackData;\nconst chatId = $input.first().json.chatId;\n\nif (data.startsWith('approve_')) {\n  const issueNumber = data.replace('approve_', '');\n  return { action: 'approve_issue', issueNumber, chatId };\n} else if (data.startsWith('reject_')) {\n  const issueNumber = data.replace('reject_', '');\n  return { action: 'reject_issue', issueNumber, chatId };\n} else if (data.startsWith('merge_pr_')) {\n  const prNumber = data.replace('merge_pr_', '');\n  return { action: 'merge_pr', prNumber, chatId };\n} else if (data.startsWith('changes_pr_')) {\n  const prNumber = data.replace('changes_pr_', '');\n  return { action: 'request_changes', prNumber, chatId };\n} else if (data.startsWith('hold_pr_')) {\n  const prNumber = data.replace('hold_pr_', '');\n  return { action: 'hold_pr', prNumber, chatId };\n}\n\nreturn { action: 'unknown', data, chatId };"
+      },
+      "id": "handle-callback",
+      "name": "Handle Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 350]
+    },
+    {
+      "parameters": {
+        "value": "={{ $json.command }}",
+        "rules": {
+          "rules": [
+            {
+              "value": "status",
+              "output": 0
+            },
+            {
+              "value": "pause",
+              "output": 1
+            },
+            {
+              "value": "resume",
+              "output": 2
+            },
+            {
+              "value": "projects",
+              "output": 3
+            },
+            {
+              "value": "natural",
+              "output": 4
+            },
+            {
+              "value": "help",
+              "output": 5
+            }
+          ]
+        }
+      },
+      "id": "command-switch",
+      "name": "Command Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1050, 250]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "list",
+        "tableId": "work_log",
+        "limit": 5,
+        "sort": {
+          "sortRules": [
+            {
+              "field": "started_at",
+              "direction": "DESC"
+            }
+          ]
+        }
+      },
+      "id": "get-status",
+      "name": "Get Current Status",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "📊 Tech LEAD Status\n\n{{ $json.length > 0 ? 'Recent Work:' : 'No active work' }}\n{{ $json.map(w => `• Issue #${w.issue_number} - ${w.status} (${w.github_workflow})`).join('\\n') }}"
+      },
+      "id": "send-status",
+      "name": "Send Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 100]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "projects_table",
+        "filters": {
+          "conditions": [
+            {
+              "field": "telegram_chat_id",
+              "value": "={{ $node['route-commands'].json.chatId }}"
+            }
+          ]
+        },
+        "data": {
+          "status": "paused"
+        }
+      },
+      "id": "pause-project",
+      "name": "Pause Project",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "⏸️ Tech LEAD paused. Use /resume to continue."
+      },
+      "id": "confirm-pause",
+      "name": "Confirm Pause",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "update",
+        "tableId": "projects_table",
+        "filters": {
+          "conditions": [
+            {
+              "field": "telegram_chat_id",
+              "value": "={{ $node['route-commands'].json.chatId }}"
+            }
+          ]
+        },
+        "data": {
+          "status": "active"
+        }
+      },
+      "id": "resume-project",
+      "name": "Resume Project",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "▶️ Tech LEAD resumed. Automation active."
+      },
+      "id": "confirm-resume",
+      "name": "Confirm Resume",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "record",
+        "operation": "list",
+        "tableId": "projects_table"
+      },
+      "id": "list-projects",
+      "name": "List Projects",
+      "type": "n8n-nodes-base.nocoDb",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "📁 Active Projects:\n\n{{ $json.map(p => `• ${p.project_identifier}\\n  ${p.repository_url}\\n  Status: ${p.status}`).join('\\n\\n') }}"
+      },
+      "id": "send-projects",
+      "name": "Send Projects List",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "command": "echo '{{ $node['route-commands'].json.text }}' | claude --prompt \"You are Tech LEAD. Answer this question based on your knowledge of the project and development work: {{ $node['route-commands'].json.text }}. Be concise and helpful.\"",
+        "outputFormat": "text"
+      },
+      "id": "claude-natural",
+      "name": "Claude Natural Language",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "{{ $json.output }}"
+      },
+      "id": "send-claude-response",
+      "name": "Send Claude Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 500]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node['route-commands'].json.chatId }}",
+        "text": "🤖 Tech LEAD Commands:\n\n/status - Current work status\n/pause - Pause automation\n/resume - Resume automation\n/projects - List active projects\n/help - Show this help\n\nOr just ask me anything about the project!"
+      },
+      "id": "send-help",
+      "name": "Send Help",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1450, 600]
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Is Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Message?": {
+      "main": [
+        [
+          {
+            "node": "Route Commands",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Commands": {
+      "main": [
+        [
+          {
+            "node": "Command Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Current Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause Project",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resume Project",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List Projects",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude Natural Language",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current Status": {
+      "main": [
+        [
+          {
+            "node": "Send Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause Project": {
+      "main": [
+        [
+          {
+            "node": "Confirm Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Project": {
+      "main": [
+        [
+          {
+            "node": "Confirm Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Projects": {
+      "main": [
+        [
+          {
+            "node": "Send Projects List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Natural Language": {
+      "main": [
+        [
+          {
+            "node": "Send Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "telegram-bot-handler"
+}
