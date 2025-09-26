@@ -6,6 +6,22 @@ echo "🤖 Testing Tech LEAD Telegram Bot"
 echo "=================================="
 echo ""
 
+# Load environment variables
+if [ -f ".env" ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+elif [ -f "../.env" ]; then
+    export $(cat ../.env | grep -v '^#' | xargs)
+else
+    echo "Error: .env file not found. Please copy .env.example to .env and configure it."
+    exit 1
+fi
+
+# Check required environment variables
+if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+    echo "Error: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set in .env file"
+    exit 1
+fi
+
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,7 +30,7 @@ NC='\033[0m'
 
 # Check webhook status
 echo -e "${YELLOW}Checking webhook status...${NC}"
-webhook_info=$(curl -s "https://api.telegram.org/bot7550244232:AAFJyN4m9JncscjDxJaMK2Nv-OI8XNJ7Zf8/getWebhookInfo")
+webhook_info=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")
 webhook_url=$(echo "$webhook_info" | jq -r '.result.url')
 pending_updates=$(echo "$webhook_info" | jq -r '.result.pending_update_count')
 last_error=$(echo "$webhook_info" | jq -r '.result.last_error_message // "none"')
@@ -37,12 +53,12 @@ echo ""
 
 # Send a test message
 echo -e "${YELLOW}Sending test message via Telegram API...${NC}"
-test_response=$(curl -s -X POST "https://api.telegram.org/bot7550244232:AAFJyN4m9JncscjDxJaMK2Nv-OI8XNJ7Zf8/sendMessage" \
+test_response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
   -H "Content-Type: application/json" \
-  -d '{
-    "chat_id": "191718134",
-    "text": "🧪 Test message from Tech LEAD setup script\n\nIf you see this, the bot is working!\n\nTry sending /help to see available commands."
-  }')
+  -d "{
+    \"chat_id\": \"${TELEGRAM_CHAT_ID}\",
+    \"text\": \"🧪 Test message from Tech LEAD setup script\n\nIf you see this, the bot is working!\n\nTry sending /help to see available commands.\"
+  }")
 
 if echo "$test_response" | grep -q '"ok":true'; then
     echo -e "${GREEN}✅ Test message sent successfully!${NC}"

@@ -40,7 +40,7 @@
           "parameters": [
             {
               "name": "xc-token",
-              "value": "zELwCZW5hJ8SRX53x9QnbHxKTvneQV-5VmPPBRjd"
+              "value": "YOUR_NOCODB_API_TOKEN_HERE"
             }
           ]
         },
@@ -108,7 +108,7 @@
           "parameters": [
             {
               "name": "xc-token",
-              "value": "zELwCZW5hJ8SRX53x9QnbHxKTvneQV-5VmPPBRjd"
+              "value": "YOUR_NOCODB_API_TOKEN_HERE"
             }
           ]
         }

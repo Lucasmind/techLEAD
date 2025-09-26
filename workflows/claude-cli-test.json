@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Extract the prompt from the request\nconst input = $input.first().json.body || $input.first().json;\n\n// Prepare data for Claude\nconst prompt = input.prompt || \"What is 2+2?\";\nconst useJson = input.json || false;\nconst maxTurns = input.max_turns || 1;\n\nreturn {\n  prompt: prompt,\n  useJson: useJson,\n  maxTurns: maxTurns,\n  timestamp: new Date().toISOString()\n};"
+        "jsCode": "// Extract the prompt from the request\nconst input = $input.first().json.body || $input.first().json;\n\n// Prepare data for Claude\nreturn {\n  prompt: input.prompt || \"What is 2+2?\",\n  json: input.json || false,\n  max_turns: input.max_turns || 1,\n  test_case: input.test_case || null\n};"
       },
       "id": "prepare",
       "name": "Prepare Claude Request",
@@ -26,57 +26,28 @@
     },
     {
       "parameters": {
-        "command": "=echo \"{{ $json.prompt }}\" | claude -p \"{{ $json.prompt }}\"{{ $json.useJson ? ' --output-format json' : '' }}",
-        "cwd": "/home/rob"
-      },
-      "id": "claude-basic",
-      "name": "Claude CLI Basic",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [650, 200],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "command": "=claude -p \"{{ $json.prompt }}\"{{ $json.useJson ? ' --output-format json' : '' }}{{ $json.maxTurns > 1 ? ' --max-turns ' + $json.maxTurns : '' }}",
-        "cwd": "/home/rob"
-      },
-      "id": "claude-direct",
-      "name": "Claude CLI Direct",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [650, 400],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "mergeByFields": {
-          "values": [
-            {
-              "field1": "timestamp",
-              "field2": "timestamp"
-            }
-          ]
-        },
-        "joinMode": "enrichInput1",
+        "method": "POST",
+        "url": "http://192.168.1.237:8888/execute",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "merge",
-      "name": "Merge Results",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 2.1,
-      "position": [850, 300]
+      "id": "http",
+      "name": "Call Claude Proxy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Parse and format Claude responses\nconst item = $input.first().json;\n\nlet response = {\n  success: true,\n  timestamp: item.timestamp,\n  prompt: item.prompt,\n  basic_result: null,\n  direct_result: null,\n  errors: []\n};\n\n// Process basic command result\nif (item.stdout) {\n  response.basic_result = item.stdout.trim();\n}\nif (item.stderr) {\n  response.errors.push(`Basic: ${item.stderr}`);\n}\n\n// Process direct command result\nif (item.stdout1) {\n  response.direct_result = item.stdout1.trim();\n}\nif (item.stderr1) {\n  response.errors.push(`Direct: ${item.stderr1}`);\n}\n\n// Parse JSON if requested\nif (item.useJson) {\n  try {\n    if (response.basic_result) {\n      response.basic_result = JSON.parse(response.basic_result);\n    }\n  } catch (e) {\n    response.errors.push(`Failed to parse basic result as JSON: ${e.message}`);\n  }\n  \n  try {\n    if (response.direct_result) {\n      response.direct_result = JSON.parse(response.direct_result);\n    }\n  } catch (e) {\n    response.errors.push(`Failed to parse direct result as JSON: ${e.message}`);\n  }\n}\n\nresponse.success = response.errors.length === 0;\n\nreturn response;"
+        "jsCode": "// Process the response from Claude proxy\nconst response = $input.first().json;\n\nlet result = {\n  success: response.success || false,\n  prompt: $node[\"Prepare Claude Request\"].json.prompt,\n  response: response.stdout || \"\",\n  error: response.stderr || \"\",\n  command: response.command || \"\"\n};\n\n// Try to parse JSON if it looks like JSON\nif (result.response && (result.response.startsWith('{') || result.response.startsWith('['))) {\n  try {\n    result.parsed_json = JSON.parse(result.response);\n  } catch (e) {\n    // Not valid JSON\n  }\n}\n\nreturn result;"
       },
-      "id": "format",
-      "name": "Format Response",
+      "id": "process",
+      "name": "Process Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1050, 300]
+      "position": [850, 300]
     }
   ],
   "connections": {
@@ -95,45 +66,18 @@
       "main": [
         [
           {
-            "node": "Claude CLI Basic",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Claude CLI Direct",
+            "node": "Call Claude Proxy",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Claude CLI Basic": {
+    "Call Claude Proxy": {
       "main": [
         [
           {
-            "node": "Merge Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Claude CLI Direct": {
-      "main": [
-        [
-          {
-            "node": "Merge Results",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Results": {
-      "main": [
-        [
-          {
-            "node": "Format Response",
+            "node": "Process Response",
             "type": "main",
             "index": 0
           }

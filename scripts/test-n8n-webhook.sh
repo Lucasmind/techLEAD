@@ -6,10 +6,27 @@ echo "🔍 Debugging n8n Webhook Registration"
 echo "======================================"
 echo ""
 
-# Check if workflow is active
-echo "Checking workflow status..."
-status=$(curl -s -X GET http://localhost:5678/api/v1/workflows/8jmnCyHa1tWZC4j6 \
-  -H "X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZGQ0NjQ5Yi0xODA0LTQ5ZTMtOTdiOC0zMTI1ZjgzMTYyZDQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU4NzM4ODM1fQ.ef9fVrEa-OIMVE0WUxVvFTPtxfHgr1R7w8Se57Aglu4" \
+# Load environment variables
+if [ -f ".env" ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+elif [ -f "../.env" ]; then
+    export $(cat ../.env | grep -v '^#' | xargs)
+else
+    echo "Error: .env file not found. Please copy .env.example to .env and configure it."
+    exit 1
+fi
+
+# Check required environment variables
+if [ -z "$N8N_API_KEY" ]; then
+    echo "Error: N8N_API_KEY must be set in .env file"
+    exit 1
+fi
+
+# Check if workflow is active (using workflow ID as parameter)
+WORKFLOW_ID="${1:-8jmnCyHa1tWZC4j6}"
+echo "Checking workflow status for ID: $WORKFLOW_ID..."
+status=$(curl -s -X GET ${N8N_API_URL:-http://localhost:5678}/api/v1/workflows/$WORKFLOW_ID \
+  -H "X-N8N-API-KEY: $N8N_API_KEY" \
   | jq '{id, name, active}')
 
 echo "$status"

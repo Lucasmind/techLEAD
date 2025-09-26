@@ -53,13 +53,29 @@ if ! curl -s http://localhost:5678 > /dev/null 2>&1; then
     exit 1
 fi
 
+# Load environment variables
+if [ -f ".env" ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+elif [ -f "../.env" ]; then
+    export $(cat ../.env | grep -v '^#' | xargs)
+else
+    echo "Error: .env file not found. Please copy .env.example to .env and configure it."
+    exit 1
+fi
+
+# Check required environment variables
+if [ -z "$N8N_API_KEY" ]; then
+    echo "Error: N8N_API_KEY must be set in .env file"
+    exit 1
+fi
+
 # Re-activate the workflow
 echo ""
 echo -e "${YELLOW}Re-activating the Telegram webhook workflow...${NC}"
-API_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZGQ0NjQ5Yi0xODA0LTQ5ZTMtOTdiOC0zMTI1ZjgzMTYyZDQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU4NzM4ODM1fQ.ef9fVrEa-OIMVE0WUxVvFTPtxfHgr1R7w8Se57Aglu4"
+API_KEY="$N8N_API_KEY"
 
 # Find and activate the Telegram workflow
-WORKFLOW_ID=$(curl -s -X GET http://localhost:5678/api/v1/workflows \
+WORKFLOW_ID=$(curl -s -X GET ${N8N_API_URL:-http://localhost:5678}/api/v1/workflows \
   -H "X-N8N-API-KEY: $API_KEY" \
   | jq -r '.data[] | select(.name | contains("Telegram")) | .id' | head -1)
 
