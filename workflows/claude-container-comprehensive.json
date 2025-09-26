@@ -1,0 +1,202 @@
+{
+  "name": "Claude Container - Comprehensive Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "=GET",
+        "path": "claude/:action",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Multi-Purpose Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract action and parameters from webhook\nconst action = $node[\"Multi-Purpose Webhook\"].json.params.action || 'test';\nconst query = $node[\"Multi-Purpose Webhook\"].json.query || {};\nconst body = $node[\"Multi-Purpose Webhook\"].json.body || {};\n\n// Merge query and body parameters\nconst params = {...query, ...body};\n\n// Define action handlers\nconst actions = {\n  'test': {\n    prompt: \"What is 2+2? Answer with just the number.\",\n    json: false,\n    max_turns: 1\n  },\n  'tech-lead': {\n    prompt: JSON.stringify({\n      role: \"Tech LEAD\",\n      task: \"analyze_issues\",\n      issues: params.issues || [\n        {number: 1, title: \"Add authentication\", priority: \"high\"},\n        {number: 2, title: \"Fix typo\", priority: \"low\"},\n        {number: 3, title: \"Implement API\", priority: \"medium\"}\n      ],\n      instruction: \"Select the highest priority issue to work on. Return JSON with: selected_issue_number, reasoning, estimated_hours\"\n    }),\n    json: true,\n    max_turns: 1\n  },\n  'code-review': {\n    prompt: params.code ? \n      `Review this code and provide feedback:\\n${params.code}` :\n      \"Review the following PR changes and provide constructive feedback\",\n    json: false,\n    max_turns: 1\n  },\n  'decision': {\n    prompt: params.question || \"Should we proceed with the deployment?\",\n    context: params.context || {},\n    json: true,\n    max_turns: 1\n  },\n  'health': {\n    isHealthCheck: true\n  }\n};\n\nconst selectedAction = actions[action] || actions['test'];\n\nif (selectedAction.isHealthCheck) {\n  return {\n    action: 'health',\n    skipClaude: true\n  };\n}\n\nreturn {\n  action,\n  request: selectedAction,\n  params,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "router",
+      "name": "Action Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.skipClaude }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check_health",
+      "name": "Is Health Check?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://claudeproxy:8888/health",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "health",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://claudeproxy:8888/execute",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "claude",
+      "name": "Call Claude Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Claude response\nconst input = $input.first().json;\nconst action = $node[\"Action Router\"].json.action;\nconst params = $node[\"Action Router\"].json.params;\n\nif (input.error) {\n  return {\n    success: false,\n    action,\n    error: input.error.message || 'Unknown error',\n    timestamp: new Date().toISOString()\n  };\n}\n\nlet result = {\n  success: input.success || false,\n  action,\n  request: {\n    prompt_preview: $node[\"Action Router\"].json.request.prompt?.substring(0, 100) + '...',\n    params\n  },\n  response: {\n    raw: input.stdout || '',\n    error: input.stderr || ''\n  },\n  execution: {\n    command: input.command,\n    returncode: input.returncode,\n    from: 'container'\n  },\n  timestamp: new Date().toISOString()\n};\n\n// Try to parse JSON responses\nif (result.response.raw) {\n  const cleanResponse = result.response.raw.trim();\n  if (cleanResponse.startsWith('{') || cleanResponse.startsWith('[')) {\n    try {\n      result.response.parsed = JSON.parse(cleanResponse);\n      \n      // For Tech LEAD decisions, extract key information\n      if (action === 'tech-lead' && result.response.parsed.selected_issue_number) {\n        result.decision = {\n          selected_issue: result.response.parsed.selected_issue_number,\n          reasoning: result.response.parsed.reasoning,\n          estimated_hours: result.response.parsed.estimated_hours\n        };\n      }\n    } catch (e) {\n      // Not valid JSON, keep as string\n      result.response.text = cleanResponse;\n    }\n  } else {\n    result.response.text = cleanResponse;\n  }\n}\n\nreturn result;"
+      },
+      "id": "process",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log to database if configured\nconst result = $input.first().json;\n\n// Here you would normally save to NocoDB\n// For now, just pass through with logging metadata\nreturn {\n  ...result,\n  logged: true,\n  log_timestamp: new Date().toISOString(),\n  would_save_to: 'decisions_log table in NocoDB'\n};"
+      },
+      "id": "log",
+      "name": "Log Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "response",
+              "value": "={{ JSON.stringify($json, null, 2) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Multi-Purpose Webhook": {
+      "main": [
+        [
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Router": {
+      "main": [
+        [
+          {
+            "node": "Is Health Check?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Health Check?": {
+      "main": [
+        [
+          {
+            "node": "Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Claude Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude Container": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Log Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Decision": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

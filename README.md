@@ -21,13 +21,19 @@ Tech LEAD acts as an intelligent technical leader for your development projects.
 ┌─────────────────────────────────────────────────────────┐
 │                    Tech LEAD System                      │
 ├───────────────┬────────────────┬────────────────────────┤
-│     n8n       │    Claude CLI  │     GitHub Actions     │
-│  Orchestrator │  Decision Brain│  @claude/@claude-test  │
+│     n8n       │  Claude Proxy  │     GitHub Actions     │
+│  Orchestrator │  Container API │  @claude/@claude-test  │
 ├───────────────┼────────────────┼────────────────────────┤
 │   NocoDB      │   Telegram Bot │    GitHub Repository   │
 │ State Storage │   PM Interface │    Source of Truth     │
 └───────────────┴────────────────┴────────────────────────┘
 ```
+
+### Container Architecture
+- **Claude Proxy Container**: HTTP API wrapper for Claude CLI
+- **Shared Docker Network**: Container-to-container communication
+- **OAuth Authentication**: Uses host's Claude credentials
+- **Port 8888**: HTTP API endpoint
 
 ## 📋 Prerequisites
 
@@ -48,7 +54,14 @@ cd techLEAD
 
 ### 2. Deploy infrastructure
 ```bash
+# Start core services
 docker-compose up -d
+
+# Setup Claude proxy container
+cd /home/rob/docker/claudecodeproxy
+./setup.sh
+docker compose build
+docker compose up -d
 ```
 
 ### 3. Configure environment
@@ -136,9 +149,16 @@ cp .env.example .env
 
 ### Common Issues
 
+**Claude Proxy Container Issues**
+- Check container status: `docker ps | grep claudeproxy`
+- View logs: `docker logs claudeproxy --tail 50`
+- Test health: `curl http://localhost:8888/health`
+- Verify credentials: `docker exec claudeproxy ls -la /home/claude/.claude/`
+
 **Claude CLI not responding**
-- Verify Claude is installed: `claude --version`
-- Check authentication: `claude auth status`
+- Container uses OAuth from host's `~/.claude/.credentials.json`
+- Refresh credentials: `cd /home/rob/docker/claudecodeproxy && ./setup.sh`
+- Rebuild container: `docker compose down && docker compose build && docker compose up -d`
 
 **Telegram bot not receiving messages**
 - Verify webhook URL in BotFather

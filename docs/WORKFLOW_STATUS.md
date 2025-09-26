@@ -1,5 +1,19 @@
 # Tech LEAD Workflow Status
 
+## 🚀 System Update - Claude Containerization Complete (2025-09-26)
+
+### Major Infrastructure Update
+- ✅ **Claude Proxy Container**: HTTP API wrapper for Claude CLI is now operational
+- ✅ **Container Networking**: n8n can communicate with Claude via `http://claudeproxy:8888`
+- ✅ **OAuth Authentication**: Using host's active Claude credentials from `~/.claude/.credentials.json`
+- ✅ **Integration Testing**: All workflows updated to use containerized Claude
+
+### Container Details
+- **Location**: `/home/rob/docker/claudecodeproxy/`
+- **Port**: 8888 (host and container)
+- **Health Endpoint**: `http://localhost:8888/health`
+- **Documentation**: See [CLAUDE_CONTAINER.md](./CLAUDE_CONTAINER.md)
+
 ## ✅ Successfully Created in n8n
 
 The following workflows have been created directly in your n8n instance via API:
@@ -62,12 +76,16 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
 2. Go to each workflow
 3. Toggle the "Active" switch in the top bar
 
-## 🔧 Remaining Workflows to Create
+## 🔧 Additional Workflows Available
 
-The following workflows still need to be converted and created:
+### New Test Workflows (2025-09-26)
+- **claude-container-test.json**: Basic container connectivity test
+- **claude-container-comprehensive.json**: Full integration test with Tech LEAD decision-making
+
+The following production workflows still need to be converted and created:
 - Issue Monitor (5-minute cycle)
 - PR Monitor (10-minute cycle)
-- Claude Execution Helper (utility workflow)
+- Claude Execution Helper (now uses container API)
 
 ## 📊 API Access Status
 
