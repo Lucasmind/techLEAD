@@ -38,7 +38,13 @@ Tech LEAD acts as an intelligent technical leader that:
    - @claude-test validates
    - @claude-review quality checks
 
-2. **Claude CLI Integration**
+2. **Workflow Management**
+   - ALWAYS refactor existing workflows - DO NOT create new versions
+   - Edit files in place, don't create -fixed, -v2, -updated versions
+   - Use the original filenames and update them directly
+   - Example: Edit `telegram-bot-handler.json`, don't create `telegram-bot-handler-fixed.json`
+
+3. **Claude CLI Integration**
    - Always use `claude` command, NOT `claude code`
    - Format: `echo "$JSON" | claude --prompt "..."`
    - Output should be JSON for parsing
@@ -136,6 +142,12 @@ For PRs to Tech LEAD:
 - Batch NocoDB operations
 - Use webhook triggers over polling where available
 - Implement exponential backoff for retries
+
+## Technical Notes
+
+### Docker Commands
+- Use `docker compose` (no hyphen) - the hyphenated `docker-compose` is outdated
+- Example: `docker compose up -d`, `docker compose down`
 
 ## Development Workflow
 

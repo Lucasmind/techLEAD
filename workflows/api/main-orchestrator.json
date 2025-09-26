@@ -1,0 +1,168 @@
+{
+  "name": "Tech LEAD - Main Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "30 Minute Cycle",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8080/api/v1/db/data/nc/projects_table",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "(status,eq,active)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xc-auth",
+              "value": "your-nocodb-api-token"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-projects",
+      "name": "Fetch Active Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.repository_url.split('/')[3] }}/{{ $json.repository_url.split('/')[4] }}/issues",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "state",
+              "value": "open"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer your-github-token"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        }
+      },
+      "id": "fetch-issues",
+      "name": "Fetch GitHub Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "command": "=echo '{{ JSON.stringify($json) }}' | claude --format json --prompt \"You are Tech LEAD, an intelligent orchestrator for GitHub development. Analyze these open issues and select the most appropriate one to work on next. Consider priority, complexity, dependencies, and project goals. Return JSON with: {selected_issue: number, reasoning: string, estimated_hours: number}\""
+      },
+      "id": "claude-decision",
+      "name": "Claude Decision - Select Issue",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8080/api/v1/db/data/nc/decisions_log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"project_id\": \"{{ $node['fetch-projects'].json.id }}\",\n  \"decision_type\": \"issue_selection\",\n  \"claude_input\": {{ JSON.stringify($node['fetch-issues'].json) }},\n  \"claude_output\": {{ JSON.stringify($json) }},\n  \"execution_status\": \"pending\"\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xc-auth",
+              "value": "your-nocodb-api-token"
+            }
+          ]
+        }
+      },
+      "id": "log-decision",
+      "name": "Log Decision to NocoDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "30 Minute Cycle": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Projects": {
+      "main": [
+        [
+          {
+            "node": "Fetch GitHub Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitHub Issues": {
+      "main": [
+        [
+          {
+            "node": "Claude Decision - Select Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Decision - Select Issue": {
+      "main": [
+        [
+          {
+            "node": "Log Decision to NocoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

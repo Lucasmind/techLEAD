@@ -1,0 +1,18 @@
+tunnel: anthropic-webhook
+credentials-file: /etc/cloudflared/77ab3cea-017a-4c05-959c-9320d2389fed.json
+
+ingress:
+  # Existing anthropic webhook
+  - hostname: anthropic-status-bot.blucas.ca
+    service: http://localhost:5555
+
+  # Linkwarden service
+  - hostname: linkwarden.blucas.ca
+    service: http://192.168.1.237:3100
+
+  # Tech LEAD n8n webhooks
+  - hostname: techlead.blucas.ca
+    service: http://192.168.1.237:5678
+
+  # Catch-all
+  - service: http_status:404

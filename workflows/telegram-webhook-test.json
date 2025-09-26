@@ -1,0 +1,103 @@
+{
+  "name": "Telegram Webhook Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log what we received\nconst data = items[0].json;\nconsole.log('Received webhook data:', JSON.stringify(data, null, 2));\n\n// Extract message info\nlet response = {\n  received: true,\n  timestamp: new Date().toISOString(),\n  message: null,\n  chat_id: null,\n  text: null,\n  from: null\n};\n\nif (data.message) {\n  response.message = 'Message received';\n  response.chat_id = data.message.chat?.id;\n  response.text = data.message.text;\n  response.from = data.message.from?.id;\n} else if (data.callback_query) {\n  response.message = 'Callback query received';\n  response.chat_id = data.callback_query.message?.chat?.id;\n  response.text = data.callback_query.data;\n  response.from = data.callback_query.from?.id;\n} else {\n  response.message = 'Unknown update type';\n  response.raw_data = data;\n}\n\nreturn [{ json: response }];"
+      },
+      "id": "process",
+      "name": "Process Webhook Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "✅ Webhook received!\n\nMessage: {{ $json.text }}\nFrom: {{ $json.from }}\nTime: {{ $json.timestamp }}",
+        "additionalFields": {}
+      },
+      "id": "respond",
+      "name": "Send Telegram Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [650, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "ok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Webhook Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Webhook Data": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

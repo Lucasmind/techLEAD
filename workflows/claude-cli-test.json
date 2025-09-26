@@ -1,0 +1,145 @@
+{
+  "name": "Claude CLI Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "claude-test",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Test Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the prompt from the request\nconst input = $input.first().json.body || $input.first().json;\n\n// Prepare data for Claude\nconst prompt = input.prompt || \"What is 2+2?\";\nconst useJson = input.json || false;\nconst maxTurns = input.max_turns || 1;\n\nreturn {\n  prompt: prompt,\n  useJson: useJson,\n  maxTurns: maxTurns,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "prepare",
+      "name": "Prepare Claude Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{ $json.prompt }}\" | claude -p \"{{ $json.prompt }}\"{{ $json.useJson ? ' --output-format json' : '' }}",
+        "cwd": "/home/rob"
+      },
+      "id": "claude-basic",
+      "name": "Claude CLI Basic",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "command": "=claude -p \"{{ $json.prompt }}\"{{ $json.useJson ? ' --output-format json' : '' }}{{ $json.maxTurns > 1 ? ' --max-turns ' + $json.maxTurns : '' }}",
+        "cwd": "/home/rob"
+      },
+      "id": "claude-direct",
+      "name": "Claude CLI Direct",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "timestamp",
+              "field2": "timestamp"
+            }
+          ]
+        },
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "id": "merge",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and format Claude responses\nconst item = $input.first().json;\n\nlet response = {\n  success: true,\n  timestamp: item.timestamp,\n  prompt: item.prompt,\n  basic_result: null,\n  direct_result: null,\n  errors: []\n};\n\n// Process basic command result\nif (item.stdout) {\n  response.basic_result = item.stdout.trim();\n}\nif (item.stderr) {\n  response.errors.push(`Basic: ${item.stderr}`);\n}\n\n// Process direct command result\nif (item.stdout1) {\n  response.direct_result = item.stdout1.trim();\n}\nif (item.stderr1) {\n  response.errors.push(`Direct: ${item.stderr1}`);\n}\n\n// Parse JSON if requested\nif (item.useJson) {\n  try {\n    if (response.basic_result) {\n      response.basic_result = JSON.parse(response.basic_result);\n    }\n  } catch (e) {\n    response.errors.push(`Failed to parse basic result as JSON: ${e.message}`);\n  }\n  \n  try {\n    if (response.direct_result) {\n      response.direct_result = JSON.parse(response.direct_result);\n    }\n  } catch (e) {\n    response.errors.push(`Failed to parse direct result as JSON: ${e.message}`);\n  }\n}\n\nresponse.success = response.errors.length === 0;\n\nreturn response;"
+      },
+      "id": "format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Test Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Claude Request": {
+      "main": [
+        [
+          {
+            "node": "Claude CLI Basic",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claude CLI Direct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude CLI Basic": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude CLI Direct": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

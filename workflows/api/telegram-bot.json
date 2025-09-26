@@ -1,0 +1,63 @@
+{
+  "name": "Tech LEAD - Telegram Bot Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const update = items[0].json;\nlet messageType = 'unknown';\nlet chatId = null;\nlet text = '';\nlet callbackData = '';\n\nif (update.message) {\n  messageType = 'message';\n  chatId = update.message.chat.id;\n  text = update.message.text || '';\n} else if (update.callback_query) {\n  messageType = 'callback';\n  chatId = update.callback_query.message.chat.id;\n  callbackData = update.callback_query.data;\n}\n\nreturn [{json: {messageType, chatId, text, callbackData, original: update}}];"
+      },
+      "id": "parse-message",
+      "name": "Parse Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

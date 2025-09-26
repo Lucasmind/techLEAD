@@ -1,0 +1,182 @@
+{
+  "name": "Tech LEAD - Telegram Bot Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Telegram message\nconst update = items[0].json;\nlet messageType = 'unknown';\nlet chatId = null;\nlet text = '';\nlet callbackData = '';\nlet userId = null;\n\nif (update.message) {\n  messageType = 'message';\n  chatId = update.message.chat.id;\n  text = update.message.text || '';\n  userId = update.message.from.id;\n} else if (update.callback_query) {\n  messageType = 'callback';\n  chatId = update.callback_query.message.chat.id;\n  callbackData = update.callback_query.data;\n  userId = update.callback_query.from.id;\n}\n\nreturn [{\n  json: {\n    messageType,\n    chatId,\n    text,\n    callbackData,\n    userId,\n    original: update\n  }\n}];"
+      },
+      "id": "parse-message",
+      "name": "Parse Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.text }}",
+              "operation": "startsWith",
+              "value2": "/"
+            }
+          ]
+        }
+      },
+      "id": "is-command",
+      "name": "Is Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Route commands\nconst text = items[0].json.text;\nconst chatId = items[0].json.chatId;\n\nlet command = '';\nlet response = '';\n\nif (text.startsWith('/help')) {\n  command = 'help';\n  response = '🤖 Tech LEAD Commands:\\n\\n/status - Current work status\\n/pause - Pause automation\\n/resume - Resume automation\\n/projects - List active projects\\n/help - Show this help\\n\\nOr just ask me anything about the project!';\n} else if (text.startsWith('/status')) {\n  command = 'status';\n  response = '📊 Tech LEAD is operational\\n\\nOrchestrator: Active\\nMonitoring: Active\\nGitHub Integration: Connected\\nNocoDB: Connected';\n} else if (text.startsWith('/pause')) {\n  command = 'pause';\n  response = '⏸️ Tech LEAD paused. Use /resume to continue.';\n} else if (text.startsWith('/resume')) {\n  command = 'resume';\n  response = '▶️ Tech LEAD resumed. Automation active.';\n} else if (text.startsWith('/projects')) {\n  command = 'projects';\n  response = '📁 Active Projects:\\n\\n• techLEAD\\n  https://github.com/Lucasmind/techLEAD\\n  Status: active';\n} else {\n  command = 'unknown';\n  response = '❓ Unknown command. Use /help to see available commands.';\n}\n\nreturn [{\n  json: {\n    command,\n    response,\n    chatId\n  }\n}];"
+      },
+      "id": "handle-command",
+      "name": "Handle Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 250]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {}
+      },
+      "id": "send-response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1050, 250],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Tech LEAD Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "🤔 Processing your message: {{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "send-processing",
+      "name": "Send Processing Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [850, 350],
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Tech LEAD Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Is Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Command?": {
+      "main": [
+        [
+          {
+            "node": "Handle Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Processing Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Command": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Response": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Processing Message": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

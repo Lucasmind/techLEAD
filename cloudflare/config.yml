@@ -1,0 +1,13 @@
+tunnel: anthropic-webhook
+
+ingress:
+  # Existing anthropic webhook
+  - hostname: anthropic-status-bot.blucas.ca
+    service: http://localhost:5555
+
+  # Tech LEAD n8n webhook
+  - hostname: techlead.blucas.ca
+    service: http://localhost:5678
+
+  # Catch-all
+  - service: http_status:404

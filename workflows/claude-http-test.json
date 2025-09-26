@@ -1,0 +1,89 @@
+{
+  "name": "Claude HTTP Test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "claude-http",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Claude HTTP Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract request data\nconst input = $input.first().json.body || $input.first().json;\n\nreturn {\n  prompt: input.prompt || \"What is 2+2?\",\n  json: input.json || false,\n  test_case: input.test_case || null,\n  max_turns: input.max_turns || 1\n};"
+      },
+      "id": "prepare",
+      "name": "Prepare Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.237:8888/execute",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http",
+      "name": "Call Claude Proxy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the response from Claude proxy\nconst response = $input.first().json;\n\nlet result = {\n  success: response.success || false,\n  prompt: $node[\"Prepare Request\"].json.prompt,\n  response: response.stdout || \"\",\n  error: response.stderr || \"\",\n  command: response.command || \"\"\n};\n\n// Try to parse JSON if it looks like JSON\nif (result.response && (result.response.startsWith('{') || result.response.startsWith('['))) {\n  try {\n    result.parsed_json = JSON.parse(result.response);\n  } catch (e) {\n    // Not valid JSON\n  }\n}\n\nreturn result;"
+      },
+      "id": "process",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Claude HTTP Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Request": {
+      "main": [
+        [
+          {
+            "node": "Call Claude Proxy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude Proxy": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}
