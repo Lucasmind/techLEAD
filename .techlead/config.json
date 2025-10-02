@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "runner": {
+    "type": "docker",
+    "container_name": "techLEAD-runner",
+    "jobs": {
+      "implement": "claude",
+      "review": "claude-review",
+      "test": "claude-test"
+    }
+  },
+  "monitoring": {
+    "timeout_seconds": 300,
+    "check_interval_seconds": 30,
+    "show_detailed_logs": false
+  },
+  "workflow": {
+    "auto_continue_on_success": true,
+    "require_pm_approval": ["merge", "sequence_start"],
+    "max_review_iterations": 3
+  },
+  "memory": {
+    "decisions_log": ".techlead/decisions_log.jsonl",
+    "work_log": ".techlead/work_log.jsonl",
+    "workflow_state": ".techlead/workflow_state.json"
+  }
+}

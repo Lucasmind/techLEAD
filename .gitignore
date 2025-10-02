@@ -1,0 +1,18 @@
+# techLEAD runtime state
+.techlead/runner_status.json
+.techlead/workflow_state.log
+
+# Node modules (if using npm)
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# OS files
+.DS_Store
+._*
+Thumbs.db
+
+# Claude Code
+.claude/chat_history/
