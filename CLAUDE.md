@@ -167,14 +167,19 @@ When workflow is interrupted:
 
 ## Monitoring
 
-### Docker Log Monitoring
+### Docker Log Monitoring (Self-Hosted Runners Only)
 
-All runner monitoring uses Docker logs for real-time feedback:
+When using self-hosted runners, monitor via Docker logs for real-time feedback:
 - `.techlead/monitor.sh implement` - Monitor @claude implementation
 - `.techlead/monitor.sh review` - Monitor @claude-review
 - `.techlead/monitor.sh test` - Monitor @claude-test
 
 Scripts are **blocking** - techLEAD waits for completion, then automatically continues.
+
+**Note:** These monitoring scripts only work with self-hosted runners. If using GitHub-hosted runners:
+- Monitor via GitHub Actions UI: Repository → Actions tab
+- Use `gh run watch` for command-line monitoring
+- Use `gh run list` to check status
 
 ## Memory System
 

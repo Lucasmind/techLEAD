@@ -45,12 +45,24 @@ techLEAD v2 is an AI-powered technical leader that autonomously manages software
 
 **No Docker required!** Uses GitHub's infrastructure.
 
+⚠️ **Note:** With GitHub-hosted runners, the Docker log monitoring (`.techlead/monitor.sh`) won't work. You'll need to monitor workflow progress via GitHub Actions UI or `gh run watch`.
+
 #### Prerequisites
 - Claude Code installed
 - GitHub repository
 - GitHub CLI (`gh`) authenticated
 
-#### Installation
+#### Setup GitHub Actions with Claude
+
+**Follow the official guide:**
+📚 [Claude Code GitHub Actions Setup](https://docs.claude.com/en/docs/claude-code/github-actions)
+
+This will guide you through:
+1. Creating the `CLAUDE_CODE_OAUTH_TOKEN` secret
+2. Setting up GitHub Actions workflows
+3. Configuring permissions
+
+#### Install techLEAD
 
 **Automated (Recommended):**
 ```bash
@@ -85,15 +97,6 @@ vim .github/workflows/claude-code-review.yml
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
 ```
 
-#### Configure GitHub Secrets
-
-1. Go to your repository on GitHub
-2. Navigate to: **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Create secret:
-   - Name: `CLAUDE_CODE_OAUTH_TOKEN`
-   - Value: Your Claude OAuth token (from `~/.claude/.credentials.json`)
-
 #### Usage
 
 ```bash
@@ -107,50 +110,57 @@ cd your-project
 /techlead
 ```
 
+**Monitoring workflows:**
+
+Since Docker log monitoring doesn't work with GitHub-hosted runners, use:
+
+```bash
+# Watch workflow in real-time
+gh run watch
+
+# Or view in GitHub Actions UI
+# Go to: Repository → Actions tab
+```
+
 ---
 
 ### Option 2: Self-Hosted Runner (Advanced)
 
-**Full control, faster execution.** Runs locally via Docker.
+**Full control, faster execution.** Runs locally with real-time Docker log monitoring.
+
+✅ **Advantage:** The `.techlead/monitor.sh` scripts work perfectly with self-hosted runners, giving you real-time job status via Docker logs.
 
 #### Prerequisites
 - Claude Code installed
-- Docker and Docker Compose
 - GitHub CLI (`gh`) authenticated
-- GitHub Personal Access Token (repo + workflow scopes)
+- Docker installed (for runner container)
 
-#### Installation
+#### Setup GitHub Actions with Claude
 
-**Automated (Recommended):**
-```bash
-cd your-project-directory
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
-# Choose option 2 (Self-hosted)
-# Follow the prompts
-```
+**Follow the official guide:**
+📚 [Claude Code GitHub Actions Setup](https://docs.claude.com/en/docs/claude-code/github-actions)
 
-**Manual:**
-```bash
-# Clone techLEAD
-git clone https://github.com/Lucasmind/techLEAD.git
-cd techLEAD
+This covers:
+1. Creating the `CLAUDE_CODE_OAUTH_TOKEN` secret
+2. Setting up GitHub Actions workflows
+3. Configuring permissions
 
-# Copy to your project
-cp -r .techlead your-project/.techlead
-cp -r .github your-project/.github
-cp -r .claude your-project/.claude
-cp CLAUDE.md your-project/CLAUDE.md
+#### Setup Self-Hosted Runner
 
-cd your-project
+**Follow GitHub's official guide:**
+📚 [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 
-# Make scripts executable
-chmod +x .techlead/*.sh .techlead/hooks/*.sh .github/runner/start.sh
-```
+This will guide you through:
+1. Creating a runner token
+2. Configuring the runner on your machine
+3. Starting the runner
 
-#### Setup Runner
+**Quick Docker Setup (Alternative):**
+
+If you prefer a Docker-based runner, we provide a complete Docker setup:
 
 ```bash
-cd .github/runner
+cd your-project/.github/runner
 
 # Configure environment
 cp .env.example .env
@@ -179,9 +189,35 @@ docker-compose up -d --build
 docker logs techlead-runner
 ```
 
-#### Configure GitHub Secrets
+See `.github/runner/README.md` for detailed Docker setup instructions.
 
-Same as Option 1 above (add `CLAUDE_CODE_OAUTH_TOKEN`).
+#### Install techLEAD
+
+**Automated (Recommended):**
+```bash
+cd your-project-directory
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+# Choose option 2 (Self-hosted)
+# Follow the prompts
+```
+
+**Manual:**
+```bash
+# Clone techLEAD
+git clone https://github.com/Lucasmind/techLEAD.git
+cd techLEAD
+
+# Copy to your project
+cp -r .techlead your-project/.techlead
+cp -r .github your-project/.github
+cp -r .claude your-project/.claude
+cp CLAUDE.md your-project/CLAUDE.md
+
+cd your-project
+
+# Make scripts executable
+chmod +x .techlead/*.sh .techlead/hooks/*.sh
+```
 
 #### Usage
 
@@ -189,7 +225,7 @@ Same as Option 1 above (add `CLAUDE_CODE_OAUTH_TOKEN`).
 # Open Claude Code in your project
 cd your-project
 
-# Update .techlead/config.json with your runner name
+# Update .techlead/config.json with your runner container name
 vim .techlead/config.json
 # Set: "container_name": "techlead-runner"
 
@@ -198,6 +234,27 @@ vim .techlead/config.json
 
 # Start techLEAD
 /techlead
+```
+
+**Monitoring workflows:**
+
+With self-hosted runners, you get real-time monitoring:
+
+```bash
+# techLEAD automatically runs this when monitoring @claude runner:
+.techlead/monitor.sh implement
+
+# You'll see real-time Docker logs:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Monitoring GitHub Actions Runner
+# Container: techlead-runner
+# Job: claude
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# ✓ Job started (2025-10-02 18:05:00Z)
+# Running... (this may take several minutes)
+# ✓ SUCCESS (2025-10-02 18:12:30Z)
+# Duration: 7m 30s
 ```
 
 ---
