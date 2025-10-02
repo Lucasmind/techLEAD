@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  github-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        RUNNER_VERSION: 2.328.0
+    container_name: ${CONTAINER_NAME:-techlead-runner}
+    restart: unless-stopped
+    environment:
+      # Required - Add your GitHub Personal Access Token with repo and workflow scopes
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      # Required - Your repository in format owner/repo
+      GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:-yourusername/yourrepo}
+      # Optional - Custom runner name
+      RUNNER_NAME: ${RUNNER_NAME:-docker-runner-1}
+      # Optional - Runner labels (these must match your workflow files)
+      RUNNER_LABELS: ${RUNNER_LABELS:-self-hosted,linux,x64,techlead}
+    volumes:
+      # Mount Docker socket for Docker-in-Docker capability
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent runner work directory
+      - runner-work:/home/runner/_work
+      # Cache directories for better performance
+      - npm-cache:/home/runner/.npm
+    networks:
+      - runner-network
+
+  # Optional: Add multiple runners by uncommenting and configuring below
+  # github-runner-2:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     args:
+  #       RUNNER_VERSION: 2.328.0
+  #   container_name: ${CONTAINER_NAME_2:-techlead-runner-2}
+  #   restart: unless-stopped
+  #   environment:
+  #     GITHUB_TOKEN: ${GITHUB_TOKEN}
+  #     GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:-yourusername/yourrepo}
+  #     RUNNER_NAME: ${RUNNER_NAME_2:-docker-runner-2}
+  #     RUNNER_LABELS: ${RUNNER_LABELS:-self-hosted,linux,x64,techlead}
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - runner-work-2:/home/runner/_work
+  #     - npm-cache:/home/runner/.npm
+  #   networks:
+  #     - runner-network
+
+volumes:
+  runner-work:
+  runner-work-2:
+  npm-cache:
+
+networks:
+  runner-network:
+    driver: bridge

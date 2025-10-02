@@ -1,0 +1,8 @@
+# Environment configuration
+.env
+
+# Claude credentials
+claude-credentials/
+
+# Logs
+*.log

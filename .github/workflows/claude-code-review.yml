@@ -1,0 +1,53 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    # RUNNER CONFIGURATION
+    # Choose ONE of the following options:
+
+    # Option 1: Self-hosted runner (requires local Docker setup)
+    # Uncomment the line below and update the label to match your runner
+    runs-on: [self-hosted, linux, x64, techlead]
+
+    # Option 2: GitHub-hosted runner (no setup required)
+    # Uncomment the line below to use GitHub's runners instead
+    # runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+
+            Use the repository's CLAUDE.md for guidance on style and conventions.
+            Be concise but constructive and helpful in your feedback.
+            Capture additional code context as needed.
+
+            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+
+          # Optional: Restrict allowed tools for security
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'

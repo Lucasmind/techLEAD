@@ -30,45 +30,209 @@ techLEAD v2 is an AI-powered technical leader that autonomously manages software
 
 ## Quick Start
 
-### Prerequisites
+### Two Installation Modes
 
-- Claude Code installed and configured
-- GitHub Actions runner (Docker container)
+**techLEAD supports two ways to run GitHub Actions:**
+
+| Mode | Best For | Setup Time | Cost |
+|------|----------|------------|------|
+| **GitHub-hosted** | Beginners, quick start | 5 minutes | Free tier available |
+| **Self-hosted** | Advanced users, full control | 20 minutes | Free (uses your hardware) |
+
+---
+
+### Option 1: GitHub-Hosted Runners (Recommended)
+
+**No Docker required!** Uses GitHub's infrastructure.
+
+#### Prerequisites
+- Claude Code installed
+- GitHub repository
 - GitHub CLI (`gh`) authenticated
-- Docker running
-- Git configured
 
-### Installation
+#### Installation
 
+**Automated (Recommended):**
 ```bash
-# Clone repository
+# Install techLEAD in your project
+cd your-project-directory
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+# Choose option 1 (GitHub-hosted)
+```
+
+**Manual:**
+```bash
+# Clone techLEAD
 git clone https://github.com/Lucasmind/techLEAD.git
 cd techLEAD
 
-# Configure runner (edit with your container name)
-vim .techlead/config.json
+# Copy to your project
+cp -r .techlead your-project/.techlead
+cp -r .github/workflows your-project/.github/workflows
+cp -r .claude your-project/.claude
+cp CLAUDE.md your-project/CLAUDE.md
+
+cd your-project
+
+# Edit workflows to use GitHub-hosted runners
+vim .github/workflows/claude.yml
+# Change: runs-on: [self-hosted, ...] → runs-on: ubuntu-latest
+
+vim .github/workflows/claude-code-review.yml
+# Change: runs-on: [self-hosted, ...] → runs-on: ubuntu-latest
 
 # Make scripts executable
-chmod +x .techlead/*.sh
-chmod +x .techlead/hooks/*.sh
-
-# Open in Claude Code and initialize
-# Run: /init
-# Then edit CLAUDE.md with project-specific context
+chmod +x .techlead/*.sh .techlead/hooks/*.sh
 ```
 
-### Usage
+#### Configure GitHub Secrets
+
+1. Go to your repository on GitHub
+2. Navigate to: **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Create secret:
+   - Name: `CLAUDE_CODE_OAUTH_TOKEN`
+   - Value: Your Claude OAuth token (from `~/.claude/.credentials.json`)
+
+#### Usage
 
 ```bash
+# Open Claude Code in your project
+cd your-project
+
+# Initialize
+/init
+
 # Start techLEAD
 /techlead
-
-# techLEAD will:
-# 1. List open issues
-# 2. Ask for prioritization
-# 3. Execute complete workflow
-# 4. Keep you updated at decision points
 ```
+
+---
+
+### Option 2: Self-Hosted Runner (Advanced)
+
+**Full control, faster execution.** Runs locally via Docker.
+
+#### Prerequisites
+- Claude Code installed
+- Docker and Docker Compose
+- GitHub CLI (`gh`) authenticated
+- GitHub Personal Access Token (repo + workflow scopes)
+
+#### Installation
+
+**Automated (Recommended):**
+```bash
+cd your-project-directory
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+# Choose option 2 (Self-hosted)
+# Follow the prompts
+```
+
+**Manual:**
+```bash
+# Clone techLEAD
+git clone https://github.com/Lucasmind/techLEAD.git
+cd techLEAD
+
+# Copy to your project
+cp -r .techlead your-project/.techlead
+cp -r .github your-project/.github
+cp -r .claude your-project/.claude
+cp CLAUDE.md your-project/CLAUDE.md
+
+cd your-project
+
+# Make scripts executable
+chmod +x .techlead/*.sh .techlead/hooks/*.sh .github/runner/start.sh
+```
+
+#### Setup Runner
+
+```bash
+cd .github/runner
+
+# Configure environment
+cp .env.example .env
+vim .env
+```
+
+Update `.env`:
+```bash
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_REPOSITORY=yourusername/yourrepo
+CONTAINER_NAME=techlead-runner
+RUNNER_LABELS=self-hosted,linux,x64,techlead
+```
+
+**Setup Claude credentials:**
+```bash
+mkdir -p claude-credentials
+cp ~/.claude/.credentials.json claude-credentials/
+```
+
+**Start runner:**
+```bash
+docker-compose up -d --build
+
+# Verify
+docker logs techlead-runner
+```
+
+#### Configure GitHub Secrets
+
+Same as Option 1 above (add `CLAUDE_CODE_OAUTH_TOKEN`).
+
+#### Usage
+
+```bash
+# Open Claude Code in your project
+cd your-project
+
+# Update .techlead/config.json with your runner name
+vim .techlead/config.json
+# Set: "container_name": "techlead-runner"
+
+# Initialize
+/init
+
+# Start techLEAD
+/techlead
+```
+
+---
+
+### What Happens When You Run `/techlead`
+
+1. **Issue Selection**
+   - Lists all open issues
+   - Analyzes and categorizes
+   - Gets your prioritization
+
+2. **Implementation**
+   - Posts @claude comment with guidance
+   - Monitors runner via Docker logs (blocking)
+   - Waits for completion
+
+3. **Testing**
+   - Spawns test-builder subagent
+   - Creates comprehensive tests
+   - Runs and validates
+
+4. **Code Review**
+   - Creates PR (auto-triggers @claude-review)
+   - Spawns code-analyzer
+   - Coordinates fixes
+
+5. **Final Validation**
+   - Spawns final-validator
+   - Runs full test suite, linting, build
+   - Runs E2E tests (Playwright)
+
+6. **Merge**
+   - Gets your approval
+   - Generates detailed summary
+   - Merges and cleans up
 
 ---
 
