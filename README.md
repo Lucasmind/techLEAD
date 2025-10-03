@@ -85,9 +85,16 @@ cd techLEAD
 cp -r .techlead your-project/.techlead
 cp -r .github/workflows your-project/.github/workflows
 cp -r .claude your-project/.claude
-cp CLAUDE.md your-project/CLAUDE.md
 
 cd your-project
+
+# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
+if [ -f "CLAUDE.md" ]; then
+  echo -e "\n---\n" >> CLAUDE.md
+  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
+else
+  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
+fi
 
 # Edit workflows to use GitHub-hosted runners
 vim .github/workflows/claude.yml
@@ -214,9 +221,16 @@ cd techLEAD
 cp -r .techlead your-project/.techlead
 cp -r .github your-project/.github
 cp -r .claude your-project/.claude
-cp CLAUDE.md your-project/CLAUDE.md
 
 cd your-project
+
+# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
+if [ -f "CLAUDE.md" ]; then
+  echo -e "\n---\n" >> CLAUDE.md
+  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
+else
+  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
+fi
 
 # Make scripts executable
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
@@ -301,9 +315,16 @@ cd techLEAD
 # Copy only orchestration components
 cp -r .techlead your-project/.techlead
 cp -r .claude your-project/.claude
-cp CLAUDE.md your-project/CLAUDE.md
 
 cd your-project
+
+# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
+if [ -f "CLAUDE.md" ]; then
+  echo -e "\n---\n" >> CLAUDE.md
+  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
+else
+  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
+fi
 
 # Make scripts executable
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
