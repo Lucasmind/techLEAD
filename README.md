@@ -30,14 +30,15 @@ techLEAD is an AI-powered technical leader that autonomously manages software de
 
 ## Quick Start
 
-### Two Installation Modes
+### Three Installation Modes
 
-**techLEAD supports two ways to run GitHub Actions:**
+**techLEAD supports three installation modes:**
 
 | Mode | Best For | Setup Time | Cost |
 |------|----------|------------|------|
 | **GitHub-hosted** | Beginners, quick start | 5 minutes | Free tier available |
 | **Self-hosted** | Advanced users, full control | 20 minutes | Free (uses your hardware) |
+| **Orchestration-only** | Existing GitHub Actions setup | 2 minutes | Free (uses your setup) |
 
 ---
 
@@ -256,6 +257,70 @@ With self-hosted runners, you get real-time monitoring:
 # ✓ SUCCESS (2025-10-02 18:12:30Z)
 # Duration: 7m 30s
 ```
+
+---
+
+### Option 3: Orchestration-Only (Existing Setup)
+
+**Already have Claude Code GitHub Actions?** Just add the orchestration layer.
+
+This mode is perfect if you:
+- ✅ Already have `@claude` and `@claude-review` workflows configured
+- ✅ Already have runners set up (GitHub-hosted or self-hosted)
+- ✅ Just want to add the techLEAD orchestration commands
+
+#### What Gets Installed
+
+- `/techlead` slash command
+- State tracking hooks
+- Subagents (test-builder, code-analyzer, final-validator)
+- Memory system (CLAUDE.md + state files)
+
+#### What Gets Skipped
+
+- GitHub workflows (keeps your existing ones)
+- Runner configuration (uses your existing runners)
+
+#### Installation
+
+**Automated:**
+```bash
+cd your-project-directory
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+# Choose option 3 (Orchestration only)
+```
+
+**Manual:**
+```bash
+# Clone techLEAD
+git clone https://github.com/Lucasmind/techLEAD.git
+cd techLEAD
+
+# Copy only orchestration components
+cp -r .techlead your-project/.techlead
+cp -r .claude your-project/.claude
+cp CLAUDE.md your-project/CLAUDE.md
+
+cd your-project
+
+# Make scripts executable
+chmod +x .techlead/*.sh .techlead/hooks/*.sh
+```
+
+#### Usage
+
+```bash
+# Open Claude Code in your project
+cd your-project
+
+# Initialize
+/init
+
+# Start techLEAD orchestration
+/techlead
+```
+
+**Important:** Make sure your existing workflows have the `@claude` and `@claude-review` triggers configured properly.
 
 ---
 

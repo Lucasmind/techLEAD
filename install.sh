@@ -55,7 +55,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}  Installation Mode${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "Choose runner mode:"
+echo "Choose installation mode:"
 echo ""
 echo "  1) GitHub-hosted runners (recommended for beginners)"
 echo "     - No setup required"
@@ -67,7 +67,12 @@ echo "     - Full control"
 echo "     - Faster execution"
 echo "     - Requires Docker"
 echo ""
-read -p "Enter choice (1 or 2): " RUNNER_MODE
+echo "  3) Orchestration only (already have GitHub Actions setup)"
+echo "     - Only installs /techlead command, hooks, and subagents"
+echo "     - Skips workflows and runner configuration"
+echo "     - For users with existing Claude Code GitHub integration"
+echo ""
+read -p "Enter choice (1, 2, or 3): " RUNNER_MODE
 
 # Copy techLEAD scripts
 echo ""
@@ -82,12 +87,14 @@ chmod +x .techlead/*.sh .techlead/hooks/*.sh
 
 echo "✓ Scripts copied"
 
-# Copy workflows
-echo -e "${GREEN}Copying GitHub workflows...${NC}"
+# Copy workflows (skip for orchestration-only mode)
+if [ "$RUNNER_MODE" != "3" ]; then
+    echo -e "${GREEN}Copying GitHub workflows...${NC}"
 
-mkdir -p .github/workflows
-cp "$TECHLEAD_DIR/.github/workflows/claude.yml" .github/workflows/
-cp "$TECHLEAD_DIR/.github/workflows/claude-code-review.yml" .github/workflows/
+    mkdir -p .github/workflows
+    cp "$TECHLEAD_DIR/.github/workflows/claude.yml" .github/workflows/
+    cp "$TECHLEAD_DIR/.github/workflows/claude-code-review.yml" .github/workflows/
+fi
 
 # Update workflows based on runner mode
 if [ "$RUNNER_MODE" = "1" ]; then
@@ -148,6 +155,19 @@ else
     echo "✓ Claude Code config installed"
 fi
 
+# Copy subagents
+echo ""
+echo -e "${GREEN}Setting up techLEAD subagents...${NC}"
+
+mkdir -p .claude/agents
+
+if [ -d "$TECHLEAD_DIR/.claude/agents" ]; then
+    cp -r "$TECHLEAD_DIR/.claude/agents"/* .claude/agents/ 2>/dev/null || true
+    echo "✓ Subagents installed (test-builder, code-analyzer, final-validator)"
+else
+    echo -e "${YELLOW}Warning: No subagents found in techLEAD repository${NC}"
+fi
+
 # Initialize or update CLAUDE.md
 echo ""
 if [ -f "CLAUDE.md" ]; then
@@ -189,15 +209,26 @@ fi
 
 # Update .techlead/config.json with runner name
 echo ""
-if [ "$RUNNER_MODE" = "2" ]; then
-    read -p "Enter your runner container name (default: techlead-runner): " CONTAINER_NAME
-    CONTAINER_NAME=${CONTAINER_NAME:-techlead-runner}
+if [ "$RUNNER_MODE" = "2" ] || [ "$RUNNER_MODE" = "3" ]; then
+    echo "Do you use a self-hosted runner with Docker?"
+    if [ "$RUNNER_MODE" = "3" ]; then
+        read -p "Configure Docker monitoring? (y/n): " USE_DOCKER
+    else
+        USE_DOCKER="y"
+    fi
 
-    # Update config
-    jq --arg name "$CONTAINER_NAME" '.runner.container_name = $name' .techlead/config.json > .techlead/config.json.tmp
-    mv .techlead/config.json.tmp .techlead/config.json
+    if [ "$USE_DOCKER" = "y" ]; then
+        read -p "Enter your runner container name (default: techlead-runner): " CONTAINER_NAME
+        CONTAINER_NAME=${CONTAINER_NAME:-techlead-runner}
 
-    echo "✓ Updated .techlead/config.json with container name: $CONTAINER_NAME"
+        # Update config
+        jq --arg name "$CONTAINER_NAME" '.runner.container_name = $name' .techlead/config.json > .techlead/config.json.tmp
+        mv .techlead/config.json.tmp .techlead/config.json
+
+        echo "✓ Updated .techlead/config.json with container name: $CONTAINER_NAME"
+    else
+        echo "✓ Skipping Docker monitoring configuration"
+    fi
 fi
 
 # Create memory files
@@ -228,7 +259,7 @@ if [ "$RUNNER_MODE" = "1" ]; then
     echo "     Create secret: CLAUDE_CODE_OAUTH_TOKEN"
     echo "  3. Open Claude Code in this directory"
     echo "  4. Run: /techlead"
-else
+elif [ "$RUNNER_MODE" = "2" ]; then
     echo "Self-hosted runner mode configured."
     echo ""
     echo "Next steps:"
@@ -237,6 +268,26 @@ else
     echo "  3. Commit and push the changes to GitHub"
     echo "  4. Open Claude Code in this directory"
     echo "  5. Run: /techlead"
+else
+    echo "Orchestration-only mode configured."
+    echo ""
+    echo "Installed components:"
+    echo "  ✓ /techlead slash command"
+    echo "  ✓ Post-tool use hooks (state tracking)"
+    echo "  ✓ Subagents (test-builder, code-analyzer, final-validator)"
+    echo "  ✓ Memory system (CLAUDE.md + state files)"
+    echo ""
+    echo "Skipped:"
+    echo "  • GitHub workflows (using your existing setup)"
+    echo "  • Runner configuration (using your existing runners)"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Ensure your existing @claude workflow is configured"
+    echo "  2. Ensure your existing @claude-review workflow is configured"
+    echo "  3. Commit and push the changes to GitHub"
+    echo "  4. Open Claude Code in this directory"
+    echo "  5. Run: /init to load configuration"
+    echo "  6. Run: /techlead to start orchestration"
 fi
 
 echo ""
