@@ -1,5 +1,7 @@
 # techLEAD
 
+### **L**eadership **E**ngine for **A**I **D**evelopment
+
 **Autonomous project orchestration powered by Claude Code**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
