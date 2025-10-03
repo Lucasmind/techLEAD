@@ -787,6 +787,43 @@ cat .techlead/work_log.jsonl
 
 ---
 
+## Uninstall
+
+To remove techLEAD from your project:
+
+```bash
+# Run the uninstall script
+./uninstall.sh
+
+# Or if you installed via curl:
+cd your-project
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh | bash
+```
+
+**What the uninstall script does:**
+
+1. **Shows what will be removed:**
+   - Directories: `.techlead/`, `.claude/agents/`, `.github/runner/`
+   - Workflows: `claude.yml`, `claude-code-review.yml`
+   - Files: Based on installation log
+
+2. **Restores backups:**
+   - `.backup.CLAUDE.md` → `CLAUDE.md`
+   - `.claude/config.json.backup` → `.claude/config.json`
+
+3. **Cleans up:**
+   - Removes all techLEAD files and directories
+   - Optionally removes techLEAD entries from `.gitignore`
+
+4. **Lists remaining backups** you can manually delete
+
+**Safe uninstall:**
+- Always creates `.gitignore.backup` before modifying
+- Asks for confirmation before removing files
+- Preserves your original project files
+
+---
+
 ## Contributing
 
 We welcome contributions! Please:
