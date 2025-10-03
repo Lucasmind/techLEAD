@@ -221,9 +221,8 @@ if [ "$RUNNER_MODE" = "1" ]; then
     rm .github/workflows/*.bak
 
     echo "✓ Workflows configured for GitHub-hosted runners"
-else
+elif [ "$RUNNER_MODE" = "2" ]; then
     echo "  Configuring for self-hosted runner..."
-    echo "✓ Workflows configured for self-hosted runner"
 
     # Copy runner configuration
     echo -e "${GREEN}Copying runner configuration...${NC}"
@@ -232,6 +231,7 @@ else
     chmod +x .github/runner/start.sh
     echo "installed:.github/runner/" >> .techlead/install.log
 
+    echo "✓ Workflows configured for self-hosted runner"
     echo "✓ Runner configuration copied"
     echo ""
     echo -e "${YELLOW}Next steps for self-hosted runner:${NC}"
@@ -286,7 +286,7 @@ fi
 echo ""
 if [ -f "CLAUDE.md" ]; then
     echo -e "${YELLOW}CLAUDE.md already exists${NC}"
-    read -p "Append techLEAD guidelines? (y/n): " APPEND_CLAUDE
+    read -p "Add minimal techLEAD reference? (y/n): " APPEND_CLAUDE
 
     if [ "$APPEND_CLAUDE" = "y" ]; then
         echo "Creating backup..."
@@ -295,15 +295,22 @@ if [ -f "CLAUDE.md" ]; then
         echo "" >> CLAUDE.md
         echo "---" >> CLAUDE.md
         echo "" >> CLAUDE.md
-        cat "$TECHLEAD_DIR/CLAUDE.md" >> CLAUDE.md
+        cat "$TECHLEAD_DIR/.techlead/claude-snippet.md" >> CLAUDE.md
         echo "modified:CLAUDE.md" >> .techlead/install.log
-        echo "✓ techLEAD guidelines appended to CLAUDE.md"
+        echo "✓ techLEAD reference added to CLAUDE.md (minimal)"
         echo "✓ Backup saved to: .backup.CLAUDE.md"
     fi
 else
-    cp "$TECHLEAD_DIR/CLAUDE.md" CLAUDE.md
-    echo "installed:CLAUDE.md" >> .techlead/install.log
-    echo "✓ CLAUDE.md created"
+    echo -e "${YELLOW}No CLAUDE.md found${NC}"
+    read -p "Create minimal CLAUDE.md with techLEAD reference? (y/n): " CREATE_CLAUDE
+
+    if [ "$CREATE_CLAUDE" = "y" ]; then
+        cp "$TECHLEAD_DIR/.techlead/claude-snippet.md" CLAUDE.md
+        echo "installed:CLAUDE.md" >> .techlead/install.log
+        echo "✓ Minimal CLAUDE.md created with techLEAD reference"
+    else
+        echo "✓ Skipped CLAUDE.md creation"
+    fi
 fi
 
 # Update .gitignore
