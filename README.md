@@ -1,15 +1,15 @@
-# techLEAD v2
+# techLEAD
 
 **Autonomous project orchestration powered by Claude Code**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
 
 ---
 
 ## Overview
 
-techLEAD v2 is an AI-powered technical leader that autonomously manages software development workflows. Built natively on Claude Code, it makes strategic decisions, coordinates GitHub Actions runners, and ensures high-quality code delivery.
+techLEAD is an AI-powered technical leader that autonomously manages software development workflows. Built natively on Claude Code, it makes strategic decisions, coordinates GitHub Actions runners, and ensures high-quality code delivery.
 
 ### What techLEAD Does
 
@@ -691,22 +691,6 @@ cat .techlead/work_log.jsonl
 
 ---
 
-## Comparison: v1 vs v2
-
-| Feature | v1 (n8n) | v2 (Claude Code) |
-|---------|----------|------------------|
-| **Platform** | n8n + Claude CLI | Claude Code native |
-| **Decision Making** | JSON parsing | Native reasoning |
-| **Monitoring** | GitHub API polling | Docker logs (real-time) |
-| **State** | NocoDB database | Files (CLAUDE.md + JSON) |
-| **PM Communication** | Telegram bot | Direct in Claude Code |
-| **Resume** | None | Full state restoration |
-| **Sequences** | Manual | Automated multi-issue |
-| **Context** | Lost between calls | Maintained in session |
-| **Setup** | Complex (5+ services) | Simple (Claude Code + runner) |
-
----
-
 ## Contributing
 
 We welcome contributions! Please:
@@ -744,6 +728,6 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 **Built with ❤️ using Claude Code**
 
-**Version:** 2.0.0
+**Version:** 1.0.0
 **Status:** Production Ready
-**Last Updated:** 2025-10-02
+**Last Updated:** 2025-10-03

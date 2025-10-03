@@ -12,12 +12,12 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}  techLEAD v2 Installation${NC}"
+echo -e "${BLUE}  techLEAD Installation${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # Detect if we're in the techLEAD repo or a target project
-if [ -f ".techlead/config.json" ] && [ -f "CLAUDE.md" ] && grep -q "techLEAD v2" CLAUDE.md 2>/dev/null; then
+if [ -f ".techlead/config.json" ] && [ -f "CLAUDE.md" ] && grep -q "techLEAD" CLAUDE.md 2>/dev/null; then
     echo -e "${YELLOW}Detected: Running from techLEAD repository${NC}"
     echo "This script will help you copy techLEAD to another project."
     echo ""

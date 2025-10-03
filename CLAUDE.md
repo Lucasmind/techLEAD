@@ -1,8 +1,8 @@
-# techLEAD v2 - Autonomous Project Orchestration
+# techLEAD - Autonomous Project Orchestration
 
 ## Project Overview
 
-techLEAD v2 is a Claude Code-native system for autonomous software development orchestration. It coordinates GitHub Actions runners, manages development workflows, and makes strategic decisions about project progress.
+techLEAD is a Claude Code-native system for autonomous software development orchestration. It coordinates GitHub Actions runners, manages development workflows, and makes strategic decisions about project progress.
 
 ## Architecture
 
@@ -200,6 +200,6 @@ Scripts are **blocking** - techLEAD waits for completion, then automatically con
 
 ---
 
-**Version**: 2.0.0
-**Last Updated**: 2025-10-02
+**Version**: 1.0.0
+**Last Updated**: 2025-10-03
 **Status**: Active
