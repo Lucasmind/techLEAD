@@ -234,6 +234,10 @@ fi
 
 # Make scripts executable
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
+
+# Configure runner container name (if using Docker monitoring)
+vim .techlead/config.json
+# Set: "container_name": "your-runner-name"
 ```
 
 #### Usage
@@ -242,16 +246,14 @@ chmod +x .techlead/*.sh .techlead/hooks/*.sh
 # Open Claude Code in your project
 cd your-project
 
-# Update .techlead/config.json with your runner container name
-vim .techlead/config.json
-# Set: "container_name": "techlead-runner"
-
 # Initialize
 /init
 
 # Start techLEAD
 /techlead
 ```
+
+**Note:** With automated installation, the script configures the container name for you.
 
 **Monitoring workflows:**
 
@@ -328,6 +330,10 @@ fi
 
 # Make scripts executable
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
+
+# Configure runner container name (if using self-hosted Docker runner)
+vim .techlead/config.json
+# Set: "container_name": "your-runner-name"
 ```
 
 #### Usage
@@ -344,6 +350,8 @@ cd your-project
 ```
 
 **Important:** Make sure your existing workflows have the `@claude` and `@claude-review` triggers configured properly.
+
+**Note:** With automated installation, the script prompts for your runner container name if you're using Docker monitoring.
 
 ---
 
