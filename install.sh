@@ -176,13 +176,13 @@ if [ -f "CLAUDE.md" ]; then
 
     if [ "$APPEND_CLAUDE" = "y" ]; then
         echo "Creating backup..."
-        cp CLAUDE.md CLAUDE.md.backup
+        cp CLAUDE.md .backup.CLAUDE.md
         echo "" >> CLAUDE.md
         echo "---" >> CLAUDE.md
         echo "" >> CLAUDE.md
         cat "$TECHLEAD_DIR/CLAUDE.md" >> CLAUDE.md
         echo "✓ techLEAD guidelines appended to CLAUDE.md"
-        echo "✓ Backup saved to: CLAUDE.md.backup"
+        echo "✓ Backup saved to: .backup.CLAUDE.md"
     fi
 else
     cp "$TECHLEAD_DIR/CLAUDE.md" CLAUDE.md
@@ -203,7 +203,7 @@ if [ -f ".gitignore" ]; then
         echo ".github/runner/claude-credentials/" >> .gitignore
         echo "" >> .gitignore
         echo "# techLEAD installation backups" >> .gitignore
-        echo "*.backup" >> .gitignore
+        echo ".backup.*" >> .gitignore
         echo "✓ .gitignore updated"
     else
         echo "✓ .gitignore already configured"

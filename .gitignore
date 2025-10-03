@@ -18,4 +18,4 @@ Thumbs.db
 .claude/chat_history/
 
 # Installation backups
-*.backup
+.backup.*
