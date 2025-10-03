@@ -175,11 +175,14 @@ if [ -f "CLAUDE.md" ]; then
     read -p "Append techLEAD guidelines? (y/n): " APPEND_CLAUDE
 
     if [ "$APPEND_CLAUDE" = "y" ]; then
+        echo "Creating backup..."
+        cp CLAUDE.md CLAUDE.md.backup
         echo "" >> CLAUDE.md
         echo "---" >> CLAUDE.md
         echo "" >> CLAUDE.md
         cat "$TECHLEAD_DIR/CLAUDE.md" >> CLAUDE.md
         echo "✓ techLEAD guidelines appended to CLAUDE.md"
+        echo "✓ Backup saved to: CLAUDE.md.backup"
     fi
 else
     cp "$TECHLEAD_DIR/CLAUDE.md" CLAUDE.md
@@ -198,6 +201,9 @@ if [ -f ".gitignore" ]; then
         echo ".techlead/workflow_state.log" >> .gitignore
         echo ".github/runner/.env" >> .gitignore
         echo ".github/runner/claude-credentials/" >> .gitignore
+        echo "" >> .gitignore
+        echo "# techLEAD installation backups" >> .gitignore
+        echo "*.backup" >> .gitignore
         echo "✓ .gitignore updated"
     else
         echo "✓ .gitignore already configured"

@@ -16,3 +16,6 @@ Thumbs.db
 
 # Claude Code
 .claude/chat_history/
+
+# Installation backups
+*.backup
