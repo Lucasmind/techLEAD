@@ -74,6 +74,16 @@ echo "     - For users with existing Claude Code GitHub integration"
 echo ""
 read -p "Enter choice (1, 2, or 3): " RUNNER_MODE
 
+# Create installation log
+mkdir -p .techlead
+cat > .techlead/install.log <<EOF
+# techLEAD Installation Log
+# Created: $(date)
+# Mode: $RUNNER_MODE
+#
+# This file tracks what was installed for easy uninstall
+EOF
+
 # Copy techLEAD scripts
 echo ""
 echo -e "${GREEN}Copying techLEAD scripts...${NC}"
@@ -85,6 +95,7 @@ cp "$TECHLEAD_DIR/.techlead/config.json" .techlead/
 
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
 
+echo "installed:.techlead/" >> .techlead/install.log
 echo "✓ Scripts copied"
 
 # Copy workflows (skip for orchestration-only mode)
@@ -94,6 +105,8 @@ if [ "$RUNNER_MODE" != "3" ]; then
     mkdir -p .github/workflows
     cp "$TECHLEAD_DIR/.github/workflows/claude.yml" .github/workflows/
     cp "$TECHLEAD_DIR/.github/workflows/claude-code-review.yml" .github/workflows/
+    echo "installed:.github/workflows/claude.yml" >> .techlead/install.log
+    echo "installed:.github/workflows/claude-code-review.yml" >> .techlead/install.log
 fi
 
 # Update workflows based on runner mode
@@ -120,6 +133,7 @@ else
     mkdir -p .github/runner
     cp -r "$TECHLEAD_DIR/.github/runner"/* .github/runner/
     chmod +x .github/runner/start.sh
+    echo "installed:.github/runner/" >> .techlead/install.log
 
     echo "✓ Runner configuration copied"
     echo ""
@@ -147,11 +161,13 @@ if [ -f ".claude/config.json" ]; then
     if [ "$MERGE_CONFIG" = "y" ]; then
         echo "Creating backup..."
         cp .claude/config.json .claude/config.json.backup
+        echo "backup:.claude/config.json.backup" >> .techlead/install.log
         echo "Please manually merge .claude/config.json with $TECHLEAD_DIR/.claude/config.json"
         echo "Backup saved to: .claude/config.json.backup"
     fi
 else
     cp "$TECHLEAD_DIR/.claude/config.json" .claude/
+    echo "installed:.claude/config.json" >> .techlead/install.log
     echo "✓ Claude Code config installed"
 fi
 
@@ -163,6 +179,7 @@ mkdir -p .claude/agents
 
 if [ -d "$TECHLEAD_DIR/.claude/agents" ]; then
     cp -r "$TECHLEAD_DIR/.claude/agents"/* .claude/agents/ 2>/dev/null || true
+    echo "installed:.claude/agents/" >> .techlead/install.log
     echo "✓ Subagents installed (test-builder, code-analyzer, final-validator)"
 else
     echo -e "${YELLOW}Warning: No subagents found in techLEAD repository${NC}"
@@ -177,15 +194,18 @@ if [ -f "CLAUDE.md" ]; then
     if [ "$APPEND_CLAUDE" = "y" ]; then
         echo "Creating backup..."
         cp CLAUDE.md .backup.CLAUDE.md
+        echo "backup:.backup.CLAUDE.md" >> .techlead/install.log
         echo "" >> CLAUDE.md
         echo "---" >> CLAUDE.md
         echo "" >> CLAUDE.md
         cat "$TECHLEAD_DIR/CLAUDE.md" >> CLAUDE.md
+        echo "modified:CLAUDE.md" >> .techlead/install.log
         echo "✓ techLEAD guidelines appended to CLAUDE.md"
         echo "✓ Backup saved to: .backup.CLAUDE.md"
     fi
 else
     cp "$TECHLEAD_DIR/CLAUDE.md" CLAUDE.md
+    echo "installed:CLAUDE.md" >> .techlead/install.log
     echo "✓ CLAUDE.md created"
 fi
 
@@ -199,17 +219,20 @@ if [ -f ".gitignore" ]; then
         echo "# techLEAD runtime state" >> .gitignore
         echo ".techlead/runner_status.json" >> .gitignore
         echo ".techlead/workflow_state.log" >> .gitignore
+        echo ".techlead/install.log" >> .gitignore
         echo ".github/runner/.env" >> .gitignore
         echo ".github/runner/claude-credentials/" >> .gitignore
         echo "" >> .gitignore
         echo "# techLEAD installation backups" >> .gitignore
         echo ".backup.*" >> .gitignore
+        echo "modified:.gitignore" >> .techlead/install.log
         echo "✓ .gitignore updated"
     else
         echo "✓ .gitignore already configured"
     fi
 else
     cp "$TECHLEAD_DIR/.gitignore" .gitignore
+    echo "installed:.gitignore" >> .techlead/install.log
     echo "✓ .gitignore created"
 fi
 

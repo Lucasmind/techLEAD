@@ -1,6 +1,7 @@
 # techLEAD runtime state
 .techlead/runner_status.json
 .techlead/workflow_state.log
+.techlead/install.log
 
 # Node modules (if using npm)
 node_modules/
