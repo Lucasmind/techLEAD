@@ -71,7 +71,13 @@ This will guide you through:
 ```bash
 # Install techLEAD in your project
 cd your-project-directory
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+
+# Download installer
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
+chmod +x install.sh
+
+# Run installer (interactive)
+./install.sh
 # Choose option 1 (GitHub-hosted)
 ```
 
@@ -206,7 +212,13 @@ See `.github/runner/README.md` for detailed Docker setup instructions.
 **Automated (Recommended):**
 ```bash
 cd your-project-directory
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+
+# Download installer
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
+chmod +x install.sh
+
+# Run installer (interactive)
+./install.sh
 # Choose option 2 (Self-hosted)
 # Follow the prompts
 ```
@@ -304,7 +316,13 @@ This mode is perfect if you:
 **Automated:**
 ```bash
 cd your-project-directory
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh | bash
+
+# Download installer
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
+chmod +x install.sh
+
+# Run installer (interactive)
+./install.sh
 # Choose option 3 (Orchestration only)
 ```
 
@@ -792,12 +810,14 @@ cat .techlead/work_log.jsonl
 To remove techLEAD from your project:
 
 ```bash
-# Run the uninstall script
+# If you have the uninstall script:
 ./uninstall.sh
 
-# Or if you installed via curl:
+# Or download and run:
 cd your-project
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh | bash
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh -o uninstall.sh
+chmod +x uninstall.sh
+./uninstall.sh
 ```
 
 **What the uninstall script does:**

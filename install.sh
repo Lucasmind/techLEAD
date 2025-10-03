@@ -16,6 +16,20 @@ echo -e "${BLUE}  techLEAD Installation${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
+# Check if running via pipe (curl | bash)
+if [ ! -t 0 ]; then
+    echo -e "${RED}ERROR: This script cannot be run via pipe (curl | bash)${NC}"
+    echo ""
+    echo "Interactive prompts don't work properly when piped."
+    echo ""
+    echo "Please run manually instead:"
+    echo "  curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh"
+    echo "  chmod +x install.sh"
+    echo "  ./install.sh"
+    echo ""
+    exit 1
+fi
+
 # Detect if we're in the techLEAD repo or a target project
 if [ -f ".techlead/config.json" ] && [ -f "CLAUDE.md" ] && grep -q "techLEAD" CLAUDE.md 2>/dev/null; then
     echo -e "${YELLOW}Detected: Running from techLEAD repository${NC}"
@@ -74,6 +88,50 @@ echo "     - For users with existing Claude Code GitHub integration"
 echo ""
 read -p "Enter choice (1, 2, or 3): " RUNNER_MODE
 
+# Validate runner mode selection
+if [ "$RUNNER_MODE" != "1" ] && [ "$RUNNER_MODE" != "2" ] && [ "$RUNNER_MODE" != "3" ]; then
+    echo -e "${RED}Error: Invalid selection. Please choose 1, 2, or 3.${NC}"
+    exit 1
+fi
+
+# Check for existing GitHub Actions setup
+echo ""
+if [ -f ".github/workflows/claude.yml" ] || [ -f ".github/workflows/claude-code-review.yml" ] || [ -d ".github/runner" ]; then
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}  WARNING: Existing GitHub Actions Setup Detected${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "Found existing files:"
+    [ -f ".github/workflows/claude.yml" ] && echo "  • .github/workflows/claude.yml"
+    [ -f ".github/workflows/claude-code-review.yml" ] && echo "  • .github/workflows/claude-code-review.yml"
+    [ -d ".github/runner" ] && echo "  • .github/runner/ (directory)"
+    echo ""
+
+    if [ "$RUNNER_MODE" = "3" ]; then
+        echo -e "${GREEN}Mode 3 selected: Workflows will NOT be modified${NC}"
+    else
+        echo -e "${RED}Mode $RUNNER_MODE will OVERWRITE these files!${NC}"
+        echo ""
+        echo "Options:"
+        echo "  1) Continue and create backups (recommended)"
+        echo "  2) Switch to Mode 3 (orchestration-only, no workflow changes)"
+        echo "  3) Cancel installation"
+        echo ""
+        read -p "Enter choice (1, 2, or 3): " OVERWRITE_CHOICE
+
+        if [ "$OVERWRITE_CHOICE" = "3" ]; then
+            echo "Installation cancelled."
+            exit 0
+        elif [ "$OVERWRITE_CHOICE" = "2" ]; then
+            RUNNER_MODE="3"
+            echo -e "${GREEN}Switched to Mode 3 (orchestration-only)${NC}"
+        elif [ "$OVERWRITE_CHOICE" != "1" ]; then
+            echo -e "${RED}Invalid choice. Installation cancelled.${NC}"
+            exit 1
+        fi
+    fi
+fi
+
 # Create installation log
 mkdir -p .techlead
 cat > .techlead/install.log <<EOF
@@ -97,6 +155,45 @@ chmod +x .techlead/*.sh .techlead/hooks/*.sh
 
 echo "installed:.techlead/" >> .techlead/install.log
 echo "✓ Scripts copied"
+
+# Backup existing workflows and runner config
+if [ "$RUNNER_MODE" != "3" ]; then
+    BACKUP_DIR=".techlead/backup-$(date +%Y%m%d-%H%M%S)"
+    NEEDS_BACKUP=false
+
+    # Check what needs backing up
+    if [ -f ".github/workflows/claude.yml" ] || [ -f ".github/workflows/claude-code-review.yml" ]; then
+        NEEDS_BACKUP=true
+    fi
+    if [ -d ".github/runner" ]; then
+        NEEDS_BACKUP=true
+    fi
+
+    if [ "$NEEDS_BACKUP" = true ]; then
+        echo -e "${YELLOW}Creating backup of existing GitHub Actions setup...${NC}"
+        mkdir -p "$BACKUP_DIR"
+
+        # Backup workflows
+        if [ -f ".github/workflows/claude.yml" ]; then
+            mkdir -p "$BACKUP_DIR/workflows"
+            cp ".github/workflows/claude.yml" "$BACKUP_DIR/workflows/"
+            echo "backup:$BACKUP_DIR/workflows/claude.yml" >> .techlead/install.log
+        fi
+        if [ -f ".github/workflows/claude-code-review.yml" ]; then
+            mkdir -p "$BACKUP_DIR/workflows"
+            cp ".github/workflows/claude-code-review.yml" "$BACKUP_DIR/workflows/"
+            echo "backup:$BACKUP_DIR/workflows/claude-code-review.yml" >> .techlead/install.log
+        fi
+
+        # Backup runner config
+        if [ -d ".github/runner" ]; then
+            cp -r ".github/runner" "$BACKUP_DIR/"
+            echo "backup:$BACKUP_DIR/runner/" >> .techlead/install.log
+        fi
+
+        echo "✓ Backup created: $BACKUP_DIR"
+    fi
+fi
 
 # Copy workflows (skip for orchestration-only mode)
 if [ "$RUNNER_MODE" != "3" ]; then
