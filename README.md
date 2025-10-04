@@ -79,7 +79,12 @@ chmod +x install.sh
 # Run installer (interactive)
 ./install.sh
 # Choose option 1 (GitHub-hosted)
+
+# Optional: Remove downloaded installer from project root
+rm install.sh
 ```
+
+**Note:** The installer is copied to `.techlead/install.sh` for reference. You can safely delete the downloaded copy from your project root.
 
 **Manual:**
 ```bash
@@ -221,7 +226,12 @@ chmod +x install.sh
 ./install.sh
 # Choose option 2 (Self-hosted)
 # Follow the prompts
+
+# Optional: Remove downloaded installer from project root
+rm install.sh
 ```
+
+**Note:** The installer is copied to `.techlead/install.sh` for reference.
 
 **Manual:**
 ```bash
@@ -324,7 +334,12 @@ chmod +x install.sh
 # Run installer (interactive)
 ./install.sh
 # Choose option 3 (Orchestration only)
+
+# Optional: Remove downloaded installer from project root
+rm install.sh
 ```
+
+**Note:** The installer is copied to `.techlead/install.sh` for reference.
 
 **Manual:**
 ```bash
@@ -810,11 +825,13 @@ cat .techlead/work_log.jsonl
 To remove techLEAD from your project:
 
 ```bash
-# Run the uninstall script (installed in .techlead/)
+# Run the uninstall script (automatically installed during setup)
 .techlead/uninstall.sh
+```
 
-# Or if you need to download it:
-cd your-project
+**If the uninstall script is missing:**
+```bash
+# Download it to the correct location
 curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh -o .techlead/uninstall.sh
 chmod +x .techlead/uninstall.sh
 .techlead/uninstall.sh
