@@ -153,7 +153,12 @@ cp "$TECHLEAD_DIR/.techlead/config.json" .techlead/
 
 chmod +x .techlead/*.sh .techlead/hooks/*.sh
 
+# Copy uninstall script for easy removal
+cp "$TECHLEAD_DIR/uninstall.sh" ./
+chmod +x uninstall.sh
+
 echo "installed:.techlead/" >> .techlead/install.log
+echo "installed:uninstall.sh" >> .techlead/install.log
 echo "✓ Scripts copied"
 
 # Backup existing workflows and runner config
@@ -433,6 +438,9 @@ echo "  - Main README: https://github.com/Lucasmind/techLEAD"
 echo "  - Runner setup: .github/runner/README.md (if using self-hosted)"
 echo ""
 echo -e "${YELLOW}Cleanup:${NC}"
-echo "  You can now delete this install script: rm install.sh"
+echo "  You can delete this install script: rm install.sh"
+echo ""
+echo -e "${YELLOW}Uninstall:${NC}"
+echo "  To remove techLEAD later, run: ./uninstall.sh"
 echo ""
 echo -e "${GREEN}Happy orchestrating! 🤖${NC}"
