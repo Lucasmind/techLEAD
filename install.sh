@@ -329,6 +329,10 @@ if [ -f ".gitignore" ]; then
         echo "" >> .gitignore
         echo "# techLEAD installation backups" >> .gitignore
         echo ".backup.*" >> .gitignore
+        echo "" >> .gitignore
+        echo "# techLEAD installer" >> .gitignore
+        echo "install.sh" >> .gitignore
+        echo "uninstall.sh" >> .gitignore
         echo "modified:.gitignore" >> .techlead/install.log
         echo "✓ .gitignore updated"
     else
@@ -427,5 +431,8 @@ echo ""
 echo "For detailed documentation, see:"
 echo "  - Main README: https://github.com/Lucasmind/techLEAD"
 echo "  - Runner setup: .github/runner/README.md (if using self-hosted)"
+echo ""
+echo -e "${YELLOW}Cleanup:${NC}"
+echo "  You can now delete this install script: rm install.sh"
 echo ""
 echo -e "${GREEN}Happy orchestrating! 🤖${NC}"
