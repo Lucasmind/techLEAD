@@ -810,14 +810,14 @@ cat .techlead/work_log.jsonl
 To remove techLEAD from your project:
 
 ```bash
-# If you have the uninstall script:
-./uninstall.sh
+# Run the uninstall script (installed in .techlead/)
+.techlead/uninstall.sh
 
-# Or download and run:
+# Or if you need to download it:
 cd your-project
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh -o uninstall.sh
-chmod +x uninstall.sh
-./uninstall.sh
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh -o .techlead/uninstall.sh
+chmod +x .techlead/uninstall.sh
+.techlead/uninstall.sh
 ```
 
 **What the uninstall script does:**
