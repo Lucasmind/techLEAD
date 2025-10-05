@@ -71,8 +71,14 @@ else
   JOB_ALREADY_RUNNING=false
 fi
 
-# Get current timestamp to watch new logs
-SINCE_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
+# Set SINCE_TIME based on whether job is already running
+if [ "$JOB_ALREADY_RUNNING" = true ]; then
+  # Job already running - tail from 10 minutes ago to catch any activity
+  SINCE_TIME="10m"
+else
+  # Job not started yet - tail from now
+  SINCE_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
+fi
 
 # Monitor variables
 JOB_STARTED=$JOB_ALREADY_RUNNING
