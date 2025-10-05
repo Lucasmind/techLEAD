@@ -71,23 +71,15 @@ else
   JOB_ALREADY_RUNNING=false
 fi
 
-# Set SINCE_TIME based on whether job is already running
-if [ "$JOB_ALREADY_RUNNING" = true ]; then
-  # Job already running - tail from 10 minutes ago to catch any activity
-  SINCE_TIME="10m"
-else
-  # Job not started yet - tail from now
-  SINCE_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
-fi
-
 # Monitor variables
 JOB_STARTED=$JOB_ALREADY_RUNNING
 START_TIMESTAMP=""
 TIMEOUT=300  # 5 minutes to wait for job start
 START_WAIT=$(date +%s)
 
-# Tail Docker logs
-docker logs -f --since "$SINCE_TIME" "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
+# Tail Docker logs - use --tail to get recent lines + follow for reliable behavior
+# This avoids issues with --since and relative times when combined with -f
+docker logs -f --tail 1000 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
 
   # Check timeout for job start
   if [ "$JOB_STARTED" = false ]; then
