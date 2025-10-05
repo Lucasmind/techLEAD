@@ -215,9 +215,26 @@ If you're confused or uncertain about next steps:
   "last_updated": "2025-10-02T18:30:00Z",
   "current_step": 9,
   "total_steps": 30,
-  "checklist": [...]
+  "checklist": [...],
+  "sequence_start_tag": "before-seq-auth-20251005-1800",
+  "sequence_end_tag": "after-seq-auth-20251005-2100",
+  "checkpoints": [
+    {
+      "issue": 42,
+      "before_tag": "before-issue-42",
+      "after_tag": "after-issue-42",
+      "status": "merged",
+      "timestamp": "2025-10-02T18:45:00Z"
+    }
+  ]
 }
 ```
+
+**Checkpoint Tags:**
+- `before-seq-<name>-<timestamp>` - Save point before sequence starts
+- `before-issue-<number>` - Save point before each issue
+- `after-issue-<number>` - Checkpoint after successful merge
+- `after-seq-<name>-<timestamp>` - Completion marker for sequence
 
 ### Resume Capability
 
@@ -279,6 +296,76 @@ gh issue comment <number> --body "@claude ..."
 - **.claude/config.json** - Hooks configuration only (no slash commands)
 - **.techlead/config.json** - Runtime configuration (runner settings, timeouts)
 
+## Rollback Procedures
+
+### When to Rollback
+
+Use rollback when:
+- Sequence went completely off track
+- Multiple issues have critical problems
+- Need to start fresh with better guidance
+- PM wants to undo recent work
+
+### Rollback Options
+
+**Entire Sequence:**
+```bash
+git reset --hard before-seq-<name>-<timestamp>
+git push --force origin main
+gh issue reopen <all-sequence-issues>
+```
+
+**Partial Sequence (Keep First N Issues):**
+```bash
+# Keep issues 1-3, remove 4-5
+git reset --hard after-issue-<number-3>
+git push --force origin main
+gh issue reopen <issues-4-5>
+```
+
+**Single Issue:**
+```bash
+git reset --hard before-issue-<number>
+git push --force origin main
+gh issue reopen <issue-number>
+```
+
+### Using /rollback Command
+
+```
+PM: /rollback
+techLEAD: [Analyzes workflow_state.json]
+techLEAD: [Shows rollback options with what gets kept/removed]
+PM: [Selects option]
+techLEAD: [Shows detailed plan, asks for confirmation]
+PM: yes
+techLEAD: [Executes rollback, reopens issues, updates state]
+```
+
+### Safety Considerations
+
+⚠️ **Rollback requires:**
+- Force push permissions on main branch
+- Coordination with team (no active work on main)
+- PM approval (destructive operation)
+
+✅ **Recovery available:**
+- Git reflog keeps rolled-back commits for ~90 days
+- Can undo rollback if mistake: `git reset --hard HEAD@{1}`
+
+### Alternative: Revert Instead of Reset
+
+If force push not allowed:
+```bash
+# Creates new commits that undo changes
+git revert <commit-range>
+git push origin main  # No force needed
+```
+
+**Trade-offs:**
+- ✅ Safer, preserves history
+- ❌ More complex, potential conflicts
+
 ## Tips for Success
 
 1. **Trust the process** - techLEAD follows a proven 30-step workflow
@@ -286,6 +373,7 @@ gh issue comment <number> --body "@claude ..."
 3. **Monitor progress** - Use TodoWrite checklist for visibility
 4. **Learn from history** - Check decisions_log.jsonl for patterns
 5. **Keep memory updated** - Document new patterns in CLAUDE.md
+6. **Use checkpoints** - Rollback to any point if needed
 
 ---
 

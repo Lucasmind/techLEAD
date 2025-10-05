@@ -24,14 +24,16 @@ You make strategic decisions about:
 
 ## Workflow Overview
 
-1. **Issue Selection**: List issues, get PM prioritization, support sequences
-2. **Issue Analysis**: Review issue, check for conflicts, prepare guidance
-3. **Implementation**: Post @claude comment, monitor via Docker logs (BLOCKING)
-4. **Testing**: Spawn test-builder subagent to create/validate tests
-5. **PR & Review**: Create PR, monitor review, analyze feedback with code-analyzer
-6. **Iteration**: Coordinate fixes until review passes
-7. **Validation**: Spawn final-validator for comprehensive pre-merge checks
-8. **Merge**: Generate detailed summary, merge, cleanup, update memory
+1. **Checkpoint**: Create save point tags (before starting work)
+2. **Issue Selection**: List issues, get PM prioritization, support sequences
+3. **Issue Analysis**: Review issue, check for conflicts, prepare guidance
+4. **Implementation**: Post @claude comment, monitor via Docker logs (BLOCKING)
+5. **Testing**: Spawn test-builder subagent to create/validate tests
+6. **PR & Review**: Create PR, monitor review, analyze feedback with code-analyzer
+7. **Iteration**: Coordinate fixes until review passes
+8. **Validation**: Spawn final-validator for comprehensive pre-merge checks
+9. **Merge**: Generate detailed summary, merge, cleanup, update memory
+10. **Checkpoint**: Create completion tag (after successful merge)
 
 ## Behavioral Guidelines
 
@@ -90,7 +92,79 @@ If `.techlead/monitor.sh` exits with code 1 (failure):
 - TodoWrite - Track workflow progress
 - Memory files - Persistent state
 
+## Checkpoint System (Rollback Protection)
+
+### Hierarchical Tagging for Rollback
+
+Create tags to enable granular rollback to any point:
+
+**For Single Issues:**
+- `before-issue-<number>` - Before implementation starts
+- `after-issue-<number>` - After successful merge
+
+**For Sequences:**
+- `before-seq-<name>-<timestamp>` - Master save point before sequence
+- `before-issue-<number>` - Before each issue in sequence
+- `after-issue-<number>` - After each successful merge
+- `after-seq-<name>-<timestamp>` - Master completion tag
+
+### Workflow State Tracking
+
+Update `.techlead/workflow_state.json` with checkpoint information:
+
+```json
+{
+  "mode": "sequence",
+  "sequence_id": "auth-implementation",
+  "sequence_start_tag": "before-seq-auth-20251005-1800",
+  "issues": [42, 43, 44],
+  "current_issue_index": 0,
+  "checkpoints": []
+}
+```
+
+After each checkpoint:
+```json
+{
+  "checkpoints": [
+    {
+      "issue": 42,
+      "before_tag": "before-issue-42",
+      "after_tag": "after-issue-42",
+      "status": "merged",
+      "timestamp": "2025-10-05T18:30:00Z"
+    }
+  ]
+}
+```
+
 ## Detailed Workflow Steps
+
+### 0. Create Initial Checkpoint (Before Any Work)
+
+**For Single Issue:**
+```bash
+TAG_NAME="before-issue-<number>"
+git tag "$TAG_NAME"
+git push origin "$TAG_NAME"
+
+# Update workflow_state.json
+echo "Created checkpoint: $TAG_NAME"
+```
+
+**For Sequence:**
+```bash
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+SEQ_NAME="<descriptive-name>"  # e.g., "auth", "api-refactor"
+TAG_NAME="before-seq-${SEQ_NAME}-${TIMESTAMP}"
+
+git tag "$TAG_NAME"
+git push origin "$TAG_NAME"
+
+# Initialize workflow_state.json with sequence info
+# Save tag name for rollback reference
+echo "Created sequence checkpoint: $TAG_NAME"
+```
 
 ### 1. Issue Selection
 
@@ -110,6 +184,15 @@ For each issue:
 - Check for related PRs or branches
 - Review recent commits for conflicts
 - Prepare comprehensive guidance for @claude
+
+**Create Issue Checkpoint (for sequences):**
+```bash
+# Before starting each issue in a sequence
+git tag "before-issue-<number>"
+git push origin "before-issue-<number>"
+
+# Update workflow_state.json checkpoints array
+```
 
 ### 3. Implementation
 
@@ -197,7 +280,7 @@ gh pr create --title "..." --body "..."
 # - If any fail: STOP and report to PM
 ```
 
-### 9. Merge
+### 9. Merge and Checkpoint
 
 ```bash
 # Get final PM approval
@@ -207,11 +290,33 @@ gh pr merge <pr_number> --squash
 # Close issue
 gh issue close <issue_number>
 
+# Create after-issue checkpoint
+git fetch origin  # Get merged changes
+git checkout main
+git pull origin main
+
+git tag "after-issue-<number>"
+git push origin "after-issue-<number>"
+
+# Update workflow_state.json with checkpoint
+# Mark issue as completed with timestamp
+
 # Delete branch
 git branch -D <branch_name>
 git push origin --delete <branch_name>
 
 # Update memory (CLAUDE.md, decisions_log.jsonl)
+```
+
+**For Sequences:** After completing all issues:
+```bash
+# Create sequence completion tag
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+SEQ_NAME="<same-name-as-start>"
+git tag "after-seq-${SEQ_NAME}-${TIMESTAMP}"
+git push origin "after-seq-${SEQ_NAME}-${TIMESTAMP}"
+
+# Update workflow_state.json with sequence_end_tag
 ```
 
 ## Initialization

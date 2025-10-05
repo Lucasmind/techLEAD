@@ -819,6 +819,151 @@ cat .techlead/work_log.jsonl
 
 ---
 
+## Rollback & Recovery
+
+techLEAD creates checkpoint tags to enable granular rollback to any point in your workflow.
+
+### Checkpoint System
+
+**Before any work starts:**
+- Single issue: `before-issue-42`
+- Sequence: `before-seq-auth-20251005-1800`
+
+**After each successful merge:**
+- Issue checkpoint: `after-issue-42`
+- Sequence completion: `after-seq-auth-20251005-2100`
+
+### Rollback Options
+
+#### 1. Rollback Entire Sequence
+
+```bash
+# Removes all work from sequence
+git reset --hard before-seq-auth-20251005-1800
+git push --force origin main
+gh issue reopen 42 43 44 45 46
+```
+
+#### 2. Partial Rollback (Keep Some Work)
+
+```bash
+# Example: Keep first 3 issues, remove last 2
+git reset --hard after-issue-44
+git push --force origin main
+gh issue reopen 45 46
+```
+
+**Available rollback points:**
+- `after-issue-42` - Keep issue 42 only
+- `after-issue-43` - Keep issues 42-43
+- `after-issue-44` - Keep issues 42-44
+- `after-issue-45` - Keep issues 42-45
+
+#### 3. Single Issue Rollback
+
+```bash
+# Remove work from issue 42
+git reset --hard before-issue-42
+git push --force origin main
+gh issue reopen 42
+```
+
+### Using the /rollback Command
+
+techLEAD provides an interactive rollback command:
+
+```bash
+# In Claude Code
+/rollback
+```
+
+**Workflow:**
+1. techLEAD analyzes workflow_state.json
+2. Shows rollback options with impact
+3. You select which checkpoint to restore
+4. techLEAD shows detailed plan
+5. You confirm with "yes"
+6. techLEAD executes rollback and reopens issues
+
+**Example:**
+```
+Sequence: OAuth Implementation
+Completed: 5/5 issues
+
+Rollback Options:
+  1) Entire sequence - removes all 5 issues
+  2) After issue #42 - keeps login, removes 4 others
+  3) After issue #43 - keeps login + signup, removes 3 others
+  4) After issue #44 - keeps first 3, removes 2 others
+  5) After issue #45 - keeps first 4, removes logout only
+
+Select option (1-5 or cancel): 4
+
+⚠️ This will:
+- Reset main to: after-issue-44
+- Remove commits: 2
+- Reopen issues: #45, #46
+- Require force push
+
+Continue? (yes/no): yes
+
+✓ Rollback complete
+✓ Issues reopened: #45, #46
+```
+
+### Safety Features
+
+**Recovery from Accidental Rollback:**
+```bash
+# Git reflog keeps history for ~90 days
+git reflog
+git reset --hard HEAD@{1}  # Undo the rollback
+git push --force origin main
+```
+
+**Requirements:**
+- Force push permissions on main branch
+- Team coordination (ensure no active work)
+- PM approval for rollback execution
+
+### Alternative: Revert Instead of Reset
+
+If force push is not allowed or safe:
+
+```bash
+# Create revert commits (preserves history)
+git revert <commit-range>
+git push origin main  # No force push needed
+```
+
+**Trade-offs:**
+- ✅ Safer (no history rewriting)
+- ✅ No force push required
+- ❌ More complex (potential conflicts)
+- ❌ Less clean (revert commits in history)
+
+### Best Practices
+
+1. **Verify impact** before rollback (git log, git diff)
+2. **Communicate** with team before force push
+3. **Document reason** in decisions_log.jsonl
+4. **Reopen issues** immediately after rollback
+5. **Provide better guidance** when retrying
+
+### When NOT to Rollback
+
+- Others have built work on top of current main
+- Production depends on current state
+- Only minor fixes needed (use regular PR instead)
+- Unsure about full impact
+
+Instead, consider:
+- Targeted fix PRs for specific issues
+- Feature flags to disable problematic features
+- Manual revert of specific commits
+
+---
+
 ## Upgrading
 
 If you already have techLEAD installed and want to upgrade to the latest version:
