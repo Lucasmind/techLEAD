@@ -78,7 +78,24 @@ if [ -f ".techlead/install.log" ] && [ "$IS_SOURCE_REPO" = false ]; then
         echo "Installation cancelled."
         exit 0
     elif [ "$INSTALL_MODE_CHOICE" = "1" ]; then
-        # Upgrade mode
+        # Upgrade mode - need to get techLEAD source location
+        echo ""
+        read -p "Enter path to techLEAD repository (or press Enter to clone): " TECHLEAD_DIR
+
+        if [ -z "$TECHLEAD_DIR" ]; then
+            echo "Cloning techLEAD repository..."
+            # Clean up any stale clone directory
+            rm -rf /tmp/techLEAD-install
+            git clone https://github.com/Lucasmind/techLEAD.git /tmp/techLEAD-install
+            TECHLEAD_DIR="/tmp/techLEAD-install"
+        fi
+
+        # Verify techLEAD directory
+        if [ ! -f "$TECHLEAD_DIR/.techlead/config.json" ]; then
+            echo -e "${RED}Error: $TECHLEAD_DIR is not a valid techLEAD repository${NC}"
+            exit 1
+        fi
+
         echo ""
         echo -e "${GREEN}Starting upgrade...${NC}"
 
