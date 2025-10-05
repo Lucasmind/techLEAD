@@ -56,28 +56,10 @@ if [ "$IS_SOURCE_REPO" = true ]; then
 
     TECHLEAD_DIR="$(pwd)"
     cd "$TARGET_DIR"
-else
-    echo -e "${GREEN}Installing techLEAD in current directory:${NC} $(pwd)"
-    echo ""
-
-    # Ask where techLEAD repo is
-    read -p "Enter path to techLEAD repository (or press Enter to clone): " TECHLEAD_DIR
-
-    if [ -z "$TECHLEAD_DIR" ]; then
-        echo "Cloning techLEAD repository..."
-        git clone https://github.com/Lucasmind/techLEAD.git /tmp/techLEAD-install
-        TECHLEAD_DIR="/tmp/techLEAD-install"
-    fi
 fi
 
-# Verify techLEAD directory
-if [ ! -f "$TECHLEAD_DIR/.techlead/config.json" ]; then
-    echo -e "${RED}Error: $TECHLEAD_DIR is not a valid techLEAD repository${NC}"
-    exit 1
-fi
-
-# Check for existing installation
-if [ -f ".techlead/install.log" ]; then
+# Check for existing installation BEFORE asking for source
+if [ -f ".techlead/install.log" ] && [ "$IS_SOURCE_REPO" = false ]; then
     echo ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}  Existing Installation Detected${NC}"
@@ -218,6 +200,27 @@ EOF
     # If choice was 2 (reinstall), continue with normal installation
     echo ""
     echo -e "${YELLOW}Proceeding with fresh installation (backups will be created)...${NC}"
+else
+    # No existing installation - ask for techLEAD source location
+    echo -e "${GREEN}Installing techLEAD in current directory:${NC} $(pwd)"
+    echo ""
+
+    # Ask where techLEAD repo is
+    read -p "Enter path to techLEAD repository (or press Enter to clone): " TECHLEAD_DIR
+
+    if [ -z "$TECHLEAD_DIR" ]; then
+        echo "Cloning techLEAD repository..."
+        # Clean up any stale clone directory
+        rm -rf /tmp/techLEAD-install
+        git clone https://github.com/Lucasmind/techLEAD.git /tmp/techLEAD-install
+        TECHLEAD_DIR="/tmp/techLEAD-install"
+    fi
+
+    # Verify techLEAD directory
+    if [ ! -f "$TECHLEAD_DIR/.techlead/config.json" ]; then
+        echo -e "${RED}Error: $TECHLEAD_DIR is not a valid techLEAD repository${NC}"
+        exit 1
+    fi
 fi
 
 echo ""
