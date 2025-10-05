@@ -29,13 +29,53 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
   exit 1
 fi
 
-echo -e "${GRAY}Waiting for job to start...${NC}"
+echo -e "${GRAY}Checking for existing job activity...${NC}"
 
-# Get current timestamp to only watch new logs
+# Check recent logs (last 5 minutes) for already-running or completed job
+RECENT_LOGS=$(docker logs --since 5m "$CONTAINER_NAME" 2>&1)
+
+# Check if job already completed
+if echo "$RECENT_LOGS" | grep -qE "Job $JOB_NAME completed with result:"; then
+  COMPLETION_LINE=$(echo "$RECENT_LOGS" | grep "Job $JOB_NAME completed with result:" | tail -1)
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  if echo "$COMPLETION_LINE" | grep -q "Succeeded"; then
+    echo -e "${GREEN}✓ Job already completed: SUCCESS${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 0
+  elif echo "$COMPLETION_LINE" | grep -q "Failed"; then
+    echo -e "${RED}✗ Job already completed: FAILED${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
+    exit 1
+  else
+    RESULT=$(echo "$COMPLETION_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
+    echo -e "${YELLOW}Job already completed: $RESULT${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 1
+  fi
+fi
+
+# Check if job is currently running
+if echo "$RECENT_LOGS" | grep -qE "Running job: $JOB_NAME"; then
+  echo -e "${GREEN}✓ Job already running${NC}"
+  echo ""
+  echo -e "${GRAY}Monitoring in progress...${NC}"
+  echo ""
+  JOB_ALREADY_RUNNING=true
+else
+  echo -e "${GRAY}Waiting for job to start...${NC}"
+  JOB_ALREADY_RUNNING=false
+fi
+
+# Get current timestamp to watch new logs
 SINCE_TIME=$(date -u +%Y-%m-%dT%H:%M:%S)
 
 # Monitor variables
-JOB_STARTED=false
+JOB_STARTED=$JOB_ALREADY_RUNNING
 START_TIMESTAMP=""
 TIMEOUT=300  # 5 minutes to wait for job start
 START_WAIT=$(date +%s)

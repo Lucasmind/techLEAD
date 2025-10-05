@@ -75,6 +75,47 @@ _To be learned over time_
 4. **Track progress** - Use TodoWrite for all workflows
 5. **Learn and adapt** - Update CLAUDE.md with new patterns
 
+### Autonomy Rules
+
+**Don't check in unnecessarily:**
+- Once PM approves work, proceed autonomously
+- Don't ask permission for routine actions (posting comments, creating PRs, running tests)
+- PM can see progress via TodoWrite checklist
+
+**When to stop and ask PM:**
+- Job failures (monitor.sh exits with code 1)
+- Uncertainty or confusion
+- Critical decisions (merging, abandoning work)
+
+**Sequence mode:**
+- Get approval ONCE at start for entire sequence
+- Proceed autonomously through all issues
+- Only stop for failures or critical decisions
+
+### Critical Execution Pattern
+
+After posting @claude comment:
+1. Post comment with `gh issue comment`
+2. **IMMEDIATELY** run `.techlead/monitor.sh implement`
+3. Script blocks until completion
+4. Check exit code: 0 = success, 1 = failure
+5. If failure: STOP and report to PM (don't continue)
+
+**Never:**
+- Check in after posting comment
+- Wait before starting monitor
+- Continue after monitor failure
+
+### Branch Synchronization
+
+After @claude creates a branch on GitHub:
+1. `git fetch origin` - Get remote branches
+2. `git checkout <branch_name>` - Switch to the new branch
+3. `git branch --show-current` - Verify you're on correct branch
+4. Proceed with testing and PR creation
+
+**Critical:** Local and remote must be synchronized before spawning test-builder or creating PRs.
+
 ### Subagent Usage
 
 **test-builder**: Creates comprehensive tests
@@ -115,26 +156,49 @@ Group related issues for efficient implementation:
 
 ### Runner Failures
 
-If @claude runner fails:
-1. Check Docker logs: `docker logs <container>`
-2. Review GitHub workflow logs: `gh run view <run_id> --log`
-3. Escalate to PM with logs and options
+When `.techlead/monitor.sh` exits with code 1:
+1. **STOP immediately** - do not proceed with workflow
+2. **Check logs**: `docker logs <container>` (for self-hosted) or GitHub Actions UI
+3. **Report to PM**:
+   - What failed (implementation/review/test job)
+   - Relevant error messages from logs
+   - 2-3 options for next steps (retry, manual fix, abandon)
+4. **Wait for PM decision** - don't attempt autonomous recovery
+
+**Critical:** Never continue workflow after monitor script failure.
 
 ### Review Failures
 
 If code review has critical issues:
-1. Use code-analyzer to categorize
-2. Present findings to PM
-3. Get approval for fixes
-4. Coordinate via @claude runner
+1. Use code-analyzer to categorize feedback
+2. **If CRITICAL issues exist:**
+   - Report to PM with categorized feedback
+   - Get approval for fix approach
+   - Coordinate fix via @claude runner
+3. **If only IMPORTANT/OPTIONAL:**
+   - Proceed autonomously with fixes
+   - No PM approval needed
 
 ### Test Failures
 
-If tests fail during validation:
-1. Identify which tests failed
-2. Analyze failure reasons
-3. If implementation issue: Escalate to PM
-4. If test issue: Use test-builder to fix
+If final-validator reports test failures:
+1. **STOP workflow** - do not proceed to merge
+2. **Identify failure type**:
+   - Unit tests: Implementation issue
+   - E2E tests: Integration issue
+   - Build: Configuration issue
+3. **Report to PM** with failure details and options
+4. **Wait for direction** (fix via @claude, manual intervention, etc.)
+
+### Uncertainty Handling
+
+If you're confused or uncertain about next steps:
+1. **STOP and ask PM** - don't guess
+2. **Explain situation** clearly
+3. **Provide options** if you have suggestions
+4. **Wait for guidance** before proceeding
+
+**Remember:** Stopping and asking is better than proceeding incorrectly.
 
 ## State Management
 
@@ -176,6 +240,25 @@ When using self-hosted runners, monitor via Docker logs for real-time feedback:
 
 Scripts are **blocking** - techLEAD waits for completion, then automatically continues.
 
+**Smart Job Detection:**
+- Checks recent logs (last 5 minutes) for already-running jobs
+- Detects already-completed jobs instantly
+- Handles race conditions (job started before monitoring)
+- Returns exit code: 0 = success, 1 = failure
+
+**Execution Pattern:**
+```bash
+# Post comment
+gh issue comment <number> --body "@claude ..."
+
+# IMMEDIATELY start monitoring (no delay)
+.techlead/monitor.sh implement
+
+# Script blocks until job completes
+# Returns 0 or 1
+# Check exit code before proceeding
+```
+
 **Note:** These monitoring scripts only work with self-hosted runners. If using GitHub-hosted runners:
 - Monitor via GitHub Actions UI: Repository → Actions tab
 - Use `gh run watch` for command-line monitoring
@@ -190,6 +273,12 @@ Scripts are **blocking** - techLEAD waits for completion, then automatically con
 - **github_ops.log** - GitHub operations log
 - **workflow_state.log** - State change log
 
+## Configuration Files
+
+- **.claude/commands/techlead.md** - Slash command definition (requires Claude Code restart to load)
+- **.claude/config.json** - Hooks configuration only (no slash commands)
+- **.techlead/config.json** - Runtime configuration (runner settings, timeouts)
+
 ## Tips for Success
 
 1. **Trust the process** - techLEAD follows a proven 30-step workflow
@@ -200,6 +289,6 @@ Scripts are **blocking** - techLEAD waits for completion, then automatically con
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-03
+**Version**: 1.1.0
+**Last Updated**: 2025-10-05
 **Status**: Active

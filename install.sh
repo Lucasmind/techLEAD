@@ -64,6 +64,150 @@ if [ ! -f "$TECHLEAD_DIR/.techlead/config.json" ]; then
     exit 1
 fi
 
+# Check for existing installation
+if [ -f ".techlead/install.log" ]; then
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}  Existing Installation Detected${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "Found existing techLEAD installation."
+    echo ""
+    echo "Options:"
+    echo "  1) Upgrade (recommended - preserves your config)"
+    echo "  2) Reinstall (fresh install, creates backups)"
+    echo "  3) Cancel"
+    echo ""
+    read -p "Enter choice (1, 2, or 3): " INSTALL_MODE_CHOICE
+
+    if [ "$INSTALL_MODE_CHOICE" = "3" ]; then
+        echo "Installation cancelled."
+        exit 0
+    elif [ "$INSTALL_MODE_CHOICE" = "1" ]; then
+        # Upgrade mode
+        echo ""
+        echo -e "${GREEN}Starting upgrade...${NC}"
+
+        # Create upgrade backup
+        UPGRADE_BACKUP=".techlead/backup-upgrade-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$UPGRADE_BACKUP"
+
+        echo "Creating backup: $UPGRADE_BACKUP"
+
+        # Backup current scripts and config
+        cp -r .techlead/*.sh "$UPGRADE_BACKUP/" 2>/dev/null || true
+        cp -r .techlead/hooks "$UPGRADE_BACKUP/" 2>/dev/null || true
+        cp .techlead/config.json "$UPGRADE_BACKUP/config.json.old" 2>/dev/null || true
+        cp .claude/config.json "$UPGRADE_BACKUP/claude-config.json.old" 2>/dev/null || true
+        cp .claude/commands/techlead.md "$UPGRADE_BACKUP/techlead.md.old" 2>/dev/null || true
+
+        echo "✓ Backup created"
+        echo ""
+
+        # Update scripts
+        echo -e "${GREEN}Updating techLEAD scripts...${NC}"
+        cp "$TECHLEAD_DIR/.techlead"/*.sh .techlead/
+        cp -r "$TECHLEAD_DIR/.techlead/hooks"/*.sh .techlead/hooks/
+        chmod +x .techlead/*.sh .techlead/hooks/*.sh
+        echo "✓ Scripts updated"
+
+        # Merge config.json (preserve user settings)
+        echo -e "${GREEN}Updating configuration...${NC}"
+        if command -v jq >/dev/null 2>&1; then
+            # Preserve container_name and other user customizations
+            CONTAINER_NAME=$(jq -r '.runner.container_name // "techlead-runner"' .techlead/config.json)
+            cp "$TECHLEAD_DIR/.techlead/config.json" .techlead/config.json
+            jq --arg name "$CONTAINER_NAME" '.runner.container_name = $name' .techlead/config.json > .techlead/config.json.tmp
+            mv .techlead/config.json.tmp .techlead/config.json
+            echo "✓ Configuration updated (preserved your container name: $CONTAINER_NAME)"
+        else
+            echo -e "${YELLOW}Warning: jq not found, copying default config${NC}"
+            cp "$TECHLEAD_DIR/.techlead/config.json" .techlead/config.json
+            echo "  Please manually update .techlead/config.json with your container name"
+        fi
+
+        # Update Claude config (hooks)
+        echo -e "${GREEN}Updating Claude Code hooks...${NC}"
+        cp "$TECHLEAD_DIR/.claude/config.json" .claude/config.json
+        echo "✓ Hooks updated"
+
+        # Update slash command
+        echo -e "${GREEN}Updating /techlead command...${NC}"
+        mkdir -p .claude/commands
+        cp "$TECHLEAD_DIR/.claude/commands/techlead.md" .claude/commands/
+        echo "✓ /techlead command updated"
+
+        # Update subagents
+        echo -e "${GREEN}Updating subagents...${NC}"
+        mkdir -p .claude/agents
+        cp -r "$TECHLEAD_DIR/.claude/agents"/* .claude/agents/ 2>/dev/null || true
+        echo "✓ Subagents updated"
+
+        # Update permissions
+        echo -e "${GREEN}Updating permissions...${NC}"
+        if [ -f ".claude/settings.local.json" ]; then
+            if command -v jq >/dev/null 2>&1; then
+                TEMP_FILE=$(mktemp)
+                jq '.permissions.allow += [".techlead/monitor.sh*", "Bash(.techlead/monitor.sh*)"] | .permissions.allow |= unique' .claude/settings.local.json > "$TEMP_FILE"
+                mv "$TEMP_FILE" .claude/settings.local.json
+                echo "✓ Permissions updated"
+            else
+                echo -e "${YELLOW}Warning: jq not found, cannot auto-update permissions${NC}"
+                echo "  Please manually add to .claude/settings.local.json:"
+                echo '    "allow": [".techlead/monitor.sh*", "Bash(.techlead/monitor.sh*)"]'
+            fi
+        else
+            cat > .claude/settings.local.json <<'EOF'
+{
+  "permissions": {
+    "allow": [
+      ".techlead/monitor.sh*",
+      "Bash(.techlead/monitor.sh*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
+EOF
+            echo "✓ Permissions configured"
+        fi
+
+        # Update install/uninstall scripts
+        cp "$TECHLEAD_DIR/install.sh" .techlead/
+        cp "$TECHLEAD_DIR/uninstall.sh" .techlead/
+
+        echo ""
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${GREEN}✓ Upgrade Complete!${NC}"
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        echo "Updated components:"
+        echo "  ✓ Monitor scripts (smart job detection)"
+        echo "  ✓ /techlead command (autonomous execution)"
+        echo "  ✓ Hooks (state tracking)"
+        echo "  ✓ Subagents (test-builder, code-analyzer, final-validator)"
+        echo "  ✓ Permissions (auto-configured)"
+        echo ""
+        echo "Preserved:"
+        echo "  ✓ Your container name and config"
+        echo "  ✓ Memory files (decisions_log.jsonl, work_log.jsonl)"
+        echo "  ✓ CLAUDE.md customizations"
+        echo ""
+        echo "Backup location: $UPGRADE_BACKUP"
+        echo ""
+        echo -e "${YELLOW}Important:${NC}"
+        echo "  1. Restart Claude Code (fully close and reopen)"
+        echo "  2. Run: /techlead to use the updated orchestrator"
+        echo ""
+        echo -e "${GREEN}Happy orchestrating! 🤖${NC}"
+        exit 0
+    fi
+
+    # If choice was 2 (reinstall), continue with normal installation
+    echo ""
+    echo -e "${YELLOW}Proceeding with fresh installation (backups will be created)...${NC}"
+fi
+
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  Installation Mode${NC}"
@@ -272,6 +416,43 @@ else
     echo "✓ Claude Code config installed"
 fi
 
+# Configure permissions for monitor.sh
+echo ""
+echo -e "${GREEN}Configuring Claude Code permissions...${NC}"
+
+if [ -f ".claude/settings.local.json" ]; then
+    # File exists, need to merge permissions
+    if command -v jq >/dev/null 2>&1; then
+        # Use jq to merge permissions
+        TEMP_FILE=$(mktemp)
+        jq '.permissions.allow += [".techlead/monitor.sh*", "Bash(.techlead/monitor.sh*)"] | .permissions.allow |= unique' .claude/settings.local.json > "$TEMP_FILE"
+        mv "$TEMP_FILE" .claude/settings.local.json
+        echo "✓ Permissions merged into existing settings.local.json"
+    else
+        echo -e "${YELLOW}Warning: jq not found, cannot auto-merge permissions${NC}"
+        echo "Please manually add to .claude/settings.local.json:"
+        echo '  "permissions": {'
+        echo '    "allow": [".techlead/monitor.sh*", "Bash(.techlead/monitor.sh*)"]'
+        echo '  }'
+    fi
+else
+    # Create new settings.local.json
+    cat > .claude/settings.local.json <<'EOF'
+{
+  "permissions": {
+    "allow": [
+      ".techlead/monitor.sh*",
+      "Bash(.techlead/monitor.sh*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
+EOF
+    echo "installed:.claude/settings.local.json" >> .techlead/install.log
+    echo "✓ Permissions configured for monitor.sh"
+fi
+
 # Copy subagents
 echo ""
 echo -e "${GREEN}Setting up techLEAD subagents...${NC}"
@@ -284,6 +465,20 @@ if [ -d "$TECHLEAD_DIR/.claude/agents" ]; then
     echo "✓ Subagents installed (test-builder, code-analyzer, final-validator)"
 else
     echo -e "${YELLOW}Warning: No subagents found in techLEAD repository${NC}"
+fi
+
+# Copy slash commands
+echo ""
+echo -e "${GREEN}Setting up techLEAD slash commands...${NC}"
+
+mkdir -p .claude/commands
+
+if [ -f "$TECHLEAD_DIR/.claude/commands/techlead.md" ]; then
+    cp "$TECHLEAD_DIR/.claude/commands/techlead.md" .claude/commands/
+    echo "installed:.claude/commands/techlead.md" >> .techlead/install.log
+    echo "✓ /techlead command installed"
+else
+    echo -e "${YELLOW}Warning: No techlead.md command found in techLEAD repository${NC}"
 fi
 
 # Initialize or update CLAUDE.md
@@ -394,7 +589,7 @@ if [ "$RUNNER_MODE" = "1" ]; then
     echo "  2. Add CLAUDE_CODE_OAUTH_TOKEN secret to your repository:"
     echo "     Go to: Settings → Secrets and variables → Actions"
     echo "     Create secret: CLAUDE_CODE_OAUTH_TOKEN"
-    echo "  3. Open Claude Code in this directory"
+    echo "  3. Open Claude Code in this directory (or restart if already open)"
     echo "  4. Run: /techlead"
 elif [ "$RUNNER_MODE" = "2" ]; then
     echo "Self-hosted runner mode configured."
@@ -403,7 +598,7 @@ elif [ "$RUNNER_MODE" = "2" ]; then
     echo "  1. Set up the runner (see instructions above)"
     echo "  2. Add CLAUDE_CODE_OAUTH_TOKEN secret to your repository"
     echo "  3. Commit and push the changes to GitHub"
-    echo "  4. Open Claude Code in this directory"
+    echo "  4. Open Claude Code in this directory (or restart if already open)"
     echo "  5. Run: /techlead"
 else
     echo "Orchestration-only mode configured."
@@ -422,9 +617,8 @@ else
     echo "  1. Ensure your existing @claude workflow is configured"
     echo "  2. Ensure your existing @claude-review workflow is configured"
     echo "  3. Commit and push the changes to GitHub"
-    echo "  4. Open Claude Code in this directory"
-    echo "  5. Run: /init to load configuration"
-    echo "  6. Run: /techlead to start orchestration"
+    echo "  4. Restart Claude Code (fully close and reopen)"
+    echo "  5. Run: /techlead to start orchestration"
 fi
 
 echo ""

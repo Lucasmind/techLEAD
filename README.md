@@ -5,7 +5,7 @@
 **Autonomous project orchestration powered by Claude Code**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
 
 ---
 
@@ -121,11 +121,8 @@ chmod +x .techlead/*.sh .techlead/hooks/*.sh
 #### Usage
 
 ```bash
-# Open Claude Code in your project
-cd your-project
-
-# Initialize
-/init
+# Restart Claude Code (fully close and reopen)
+# This is required for the /techlead command to load
 
 # Start techLEAD
 /techlead
@@ -265,11 +262,8 @@ vim .techlead/config.json
 #### Usage
 
 ```bash
-# Open Claude Code in your project
-cd your-project
-
-# Initialize
-/init
+# Restart Claude Code (fully close and reopen)
+# This is required for the /techlead command to load
 
 # Start techLEAD
 /techlead
@@ -372,11 +366,8 @@ vim .techlead/config.json
 #### Usage
 
 ```bash
-# Open Claude Code in your project
-cd your-project
-
-# Initialize
-/init
+# Restart Claude Code (fully close and reopen)
+# This is required for the /techlead command to load
 
 # Start techLEAD orchestration
 /techlead
@@ -641,11 +632,19 @@ What would you like to do?
 ### .claude/config.json
 
 Contains:
-- `/techlead` slash command definition
 - Hook configuration (PostToolUse, SubagentStop)
-- Automatically loaded by Claude Code
+- Automatically loaded by Claude Code on startup
 
 **Do not edit unless you know what you're doing.**
+
+### .claude/commands/techlead.md
+
+Contains:
+- `/techlead` slash command definition
+- Loaded by Claude Code on startup
+- **Requires full restart** (close and reopen) to load changes
+
+**Note:** Claude Code v2.0.8+ uses `.md` files in `.claude/commands/` for slash commands instead of `config.json`.
 
 ---
 
@@ -820,6 +819,50 @@ cat .techlead/work_log.jsonl
 
 ---
 
+## Upgrading
+
+If you already have techLEAD installed and want to upgrade to the latest version:
+
+```bash
+# Run the install script again
+.techlead/install.sh
+
+# Or download the latest version
+curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o /tmp/techlead-upgrade.sh
+chmod +x /tmp/techlead-upgrade.sh
+/tmp/techlead-upgrade.sh
+```
+
+**The installer will automatically detect your existing installation and offer:**
+
+1. **Upgrade (recommended)** - Updates all components while preserving your configuration
+2. **Reinstall** - Fresh installation with backups
+3. **Cancel** - Exit without changes
+
+### What Gets Updated
+
+- ✅ Monitor scripts (smart job detection)
+- ✅ /techlead command (autonomous execution)
+- ✅ Hooks (state tracking)
+- ✅ Subagents (test-builder, code-analyzer, final-validator)
+- ✅ Permissions (auto-configured)
+
+### What Gets Preserved
+
+- ✅ Your container name and runtime config
+- ✅ Memory files (decisions_log.jsonl, work_log.jsonl)
+- ✅ CLAUDE.md customizations
+- ✅ Workflow files (if Mode 3)
+
+### After Upgrading
+
+1. **Restart Claude Code** (fully close and reopen)
+2. Run `/techlead` to use the updated orchestrator
+
+The upgrade creates a timestamped backup in `.techlead/backup-upgrade-[timestamp]/` so you can roll back if needed.
+
+---
+
 ## Uninstall
 
 To remove techLEAD from your project:
@@ -898,6 +941,6 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 **Built with ❤️ using Claude Code**
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Production Ready
-**Last Updated:** 2025-10-03
+**Last Updated:** 2025-10-05
