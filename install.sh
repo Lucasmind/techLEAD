@@ -30,8 +30,20 @@ if [ ! -t 0 ]; then
     exit 1
 fi
 
-# Detect if we're in the techLEAD repo or a target project
-if [ -f ".techlead/config.json" ] && [ -f "CLAUDE.md" ] && grep -q "techLEAD" CLAUDE.md 2>/dev/null; then
+# Detect if we're in the techLEAD source repo
+# Check for presence of source-only files (uninstall.sh in root + .techlead directory structure)
+IS_SOURCE_REPO=false
+if [ -f "uninstall.sh" ] && [ -f "install.sh" ] && [ -d ".techlead" ] && [ -d ".claude/agents" ] && [ ! -f ".techlead/install.log" ]; then
+    # Additional check: look for git remote pointing to techLEAD
+    if [ -d ".git" ]; then
+        GIT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+        if echo "$GIT_REMOTE" | grep -q "techLEAD"; then
+            IS_SOURCE_REPO=true
+        fi
+    fi
+fi
+
+if [ "$IS_SOURCE_REPO" = true ]; then
     echo -e "${YELLOW}Detected: Running from techLEAD repository${NC}"
     echo "This script will help you copy techLEAD to another project."
     echo ""
