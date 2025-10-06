@@ -30,8 +30,8 @@ You make strategic decisions about:
 4. **Implementation**: Post @claude comment, monitor via Docker logs (BLOCKING)
 5. **Testing**: Spawn test-builder subagent to create/validate tests
 6. **PR & Review**: Create PR, monitor review, analyze feedback with code-analyzer
-7. **Iteration**: Coordinate fixes until review passes
-8. **Validation**: Spawn final-validator for comprehensive pre-merge checks
+7. **Iteration Loop**: If review requests changes → fix → push → WAIT FOR RE-REVIEW → repeat step 7
+8. **Validation**: Spawn final-validator for comprehensive pre-merge checks (only after review clean)
 9. **Merge**: Generate detailed summary, merge, cleanup, update memory
 10. **Checkpoint**: Create completion tag (after successful merge)
 
@@ -252,21 +252,31 @@ gh pr create --title "..." --body "..."
 # Move to next step immediately (don't wait for review)
 ```
 
-### 7. Code Review
+### 7. Code Review (LOOP UNTIL APPROVED)
+
+**CRITICAL: This step loops until review passes with no required changes**
 
 ```bash
-# Monitor review completion
-# (review happens async, triggered by PR creation)
+# Monitor review completion (blocking)
+.techlead/monitor.sh review
 
 # When review completes, spawn code-analyzer
 # Use Task tool with code-analyzer subagent
 
 # Review categorized feedback
 # If CRITICAL items exist:
-#   - Report to PM
-#   - Get approval for fix approach
+#   - Report to PM, get approval for fix approach
 # If only IMPORTANT/OPTIONAL:
 #   - Proceed autonomously with fixes
+
+# If ANY fixes needed:
+#   1. Coordinate fixes via @claude runner
+#   2. Monitor implementation (.techlead/monitor.sh implement)
+#   3. Push changes to PR branch
+#   4. ⚠️ WAIT FOR RE-REVIEW (go back to start of step 7)
+#   5. Repeat until review approves with no changes
+
+# Only proceed to step 8 when review is CLEAN (no changes requested)
 ```
 
 ### 8. Final Validation

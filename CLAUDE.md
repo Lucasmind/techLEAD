@@ -21,11 +21,10 @@ techLEAD is a Claude Code-native system for autonomous software development orch
 4. Monitors runner via Docker logs (blocking)
 5. Spawns test-builder for testing
 6. Creates PR (auto-triggers @claude-review)
-7. Analyzes review with code-analyzer
-8. Iterates until approved
-9. Spawns final-validator for pre-merge checks
-10. Merges with detailed summary
-11. Updates memory and state
+7. **REVIEW LOOP**: Monitors review → Analyzes with code-analyzer → If changes needed: fix → push → **WAIT FOR RE-REVIEW** → repeat step 7
+8. Spawns final-validator for pre-merge checks (only after review is clean)
+9. Merges with detailed summary
+10. Updates memory and state
 
 ## Project Standards
 
@@ -169,15 +168,26 @@ When `.techlead/monitor.sh` exits with code 1:
 
 ### Review Failures
 
+**CRITICAL: This creates a loop - you MUST wait for re-review after fixes**
+
 If code review has critical issues:
 1. Use code-analyzer to categorize feedback
 2. **If CRITICAL issues exist:**
    - Report to PM with categorized feedback
    - Get approval for fix approach
    - Coordinate fix via @claude runner
+   - Monitor implementation (.techlead/monitor.sh implement)
+   - Push changes to PR branch
+   - **WAIT FOR RE-REVIEW** (.techlead/monitor.sh review)
+   - Return to step 1 (analyze new review results)
 3. **If only IMPORTANT/OPTIONAL:**
    - Proceed autonomously with fixes
-   - No PM approval needed
+   - Monitor implementation (.techlead/monitor.sh implement)
+   - Push changes to PR branch
+   - **WAIT FOR RE-REVIEW** (.techlead/monitor.sh review)
+   - Return to step 1 (analyze new review results)
+
+**Only exit this loop when review is CLEAN (approves with no changes requested)**
 
 ### Test Failures
 
