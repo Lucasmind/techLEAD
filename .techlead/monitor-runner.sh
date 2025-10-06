@@ -114,7 +114,8 @@ fi
 
 # Tail Docker logs - use --tail 2 to capture current state (single-threaded runner)
 # Line 1: Previous state, Line 2: Current state, then -f follows new lines
-docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
+# Use process substitution to avoid subshell (pipe would make exit not work)
+while IFS= read -r LINE; do
 
   # Check timeout for job start
   if [ "$JOB_STARTED" = false ]; then
@@ -190,9 +191,9 @@ docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
     fi
   fi
 
-done
+done < <(docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1)
 
-# Should not reach here (pipe broke or container stopped)
+# Should not reach here (process substitution ended unexpectedly)
 echo ""
 echo -e "${RED}✗ Monitoring stopped unexpectedly${NC}"
 exit 1
