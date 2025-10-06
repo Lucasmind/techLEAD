@@ -29,44 +29,43 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
   exit 1
 fi
 
-echo -e "${GRAY}Checking for existing job activity...${NC}"
+echo -e "${GRAY}Checking current runner state...${NC}"
 
-# Check recent logs (last 5 minutes) for already-running or completed job
-RECENT_LOGS=$(docker logs --since 5m "$CONTAINER_NAME" 2>&1)
+# Get the LAST line of logs to determine actual current state
+LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
 
-# Check if job already completed
-if echo "$RECENT_LOGS" | grep -qE "Job $JOB_NAME completed with result:"; then
-  COMPLETION_LINE=$(echo "$RECENT_LOGS" | grep "Job $JOB_NAME completed with result:" | tail -1)
-
+# Check if the last line shows our job completed
+if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  if echo "$COMPLETION_LINE" | grep -q "Succeeded"; then
+  if echo "$LAST_LINE" | grep -q "Succeeded"; then
     echo -e "${GREEN}✓ Job already completed: SUCCESS${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     exit 0
-  elif echo "$COMPLETION_LINE" | grep -q "Failed"; then
+  elif echo "$LAST_LINE" | grep -q "Failed"; then
     echo -e "${RED}✗ Job already completed: FAILED${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
     exit 1
   else
-    RESULT=$(echo "$COMPLETION_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
+    RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
     echo -e "${YELLOW}Job already completed: $RESULT${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     exit 1
   fi
 fi
 
-# Check if job is currently running
-if echo "$RECENT_LOGS" | grep -qE "Running job: $JOB_NAME"; then
+# Check if the last line shows our job currently running
+if echo "$LAST_LINE" | grep -qE "Running job: $JOB_NAME"; then
   echo -e "${GREEN}✓ Job already running${NC}"
   echo ""
   echo -e "${GRAY}Monitoring in progress...${NC}"
   echo ""
   JOB_ALREADY_RUNNING=true
 else
+  # Last line doesn't show our job - need to wait for it to start
   echo -e "${GRAY}Waiting for job to start...${NC}"
   JOB_ALREADY_RUNNING=false
 fi
