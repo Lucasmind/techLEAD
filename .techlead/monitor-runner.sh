@@ -36,46 +36,13 @@ LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
 
 # Check if the last line shows our job completed
 if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
-  # Extract timestamp from log line
-  LOG_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z')
+  # Found a completion, but we can't trust it's the current job
+  # techLEAD posts comment at T, starts monitoring at T+1s
+  # Any completion we find now is from a PREVIOUS job (work takes minutes, not seconds)
+  # Solution: Always wait for the job to actually run, never exit immediately
+  echo -e "${GRAY}Previous job completion found, waiting for new job to start...${NC}"
+  JOB_ALREADY_RUNNING=false
 
-  if [ -n "$LOG_TIMESTAMP" ]; then
-    # Convert to epoch seconds
-    LOG_TIME=$(date -d "$LOG_TIMESTAMP" +%s 2>/dev/null || echo "0")
-    CURRENT_TIME=$(date +%s)
-    AGE=$((CURRENT_TIME - LOG_TIME))
-
-    # Only treat as current job if completed within last 30 seconds
-    if [ "$LOG_TIME" != "0" ] && [ "$AGE" -le 30 ]; then
-      echo ""
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-      if echo "$LAST_LINE" | grep -q "Succeeded"; then
-        echo -e "${GREEN}✓ Job already completed: SUCCESS${NC}"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        exit 0
-      elif echo "$LAST_LINE" | grep -q "Failed"; then
-        echo -e "${RED}✗ Job already completed: FAILED${NC}"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-        echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
-        exit 1
-      else
-        RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
-        echo -e "${YELLOW}Job already completed: $RESULT${NC}"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        exit 1
-      fi
-    else
-      # Old completion (>30s ago) - waiting for new job
-      echo -e "${GRAY}Old job completion detected (${AGE}s ago), waiting for new job...${NC}"
-      JOB_ALREADY_RUNNING=false
-    fi
-  else
-    # Couldn't parse timestamp, treat as waiting
-    echo -e "${GRAY}Waiting for job to start...${NC}"
-    JOB_ALREADY_RUNNING=false
-  fi
 elif echo "$LAST_LINE" | grep -qE "Running job: $JOB_NAME"; then
   # Job is currently running
   echo -e "${GREEN}✓ Job already running${NC}"
