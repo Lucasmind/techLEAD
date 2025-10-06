@@ -114,7 +114,8 @@ fi
 
 # Tail Docker logs - use --tail 2 to capture current state (single-threaded runner)
 # Line 1: Previous state, Line 2: Current state, then -f follows new lines
-# Use process substitution to avoid subshell (pipe would make exit not work)
+# Use process substitution and break to exit cleanly
+EXIT_CODE=""
 while IFS= read -r LINE; do
 
   # Check timeout for job start
@@ -125,7 +126,8 @@ while IFS= read -r LINE; do
     if [ $ELAPSED -gt $TIMEOUT ]; then
       echo ""
       echo -e "${RED}✗ Timeout: Job '$JOB_NAME' did not start within ${TIMEOUT}s${NC}"
-      exit 1
+      EXIT_CODE=1
+      break
     fi
   fi
 
@@ -167,12 +169,13 @@ while IFS= read -r LINE; do
       DURATION_STR="unknown"
     fi
 
-    # Check result
+    # Check result and break
     if echo "$LINE" | grep -q "Succeeded"; then
       echo -e "${GREEN}✓ SUCCESS${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      exit 0
+      EXIT_CODE=0
+      break
 
     elif echo "$LINE" | grep -q "Failed"; then
       echo -e "${RED}✗ FAILED${NC} ($END_TIMESTAMP)"
@@ -180,20 +183,27 @@ while IFS= read -r LINE; do
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo ""
       echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
-      exit 1
+      EXIT_CODE=1
+      break
 
     else
       RESULT=$(echo "$LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
       echo -e "${YELLOW}Job completed: $RESULT${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      exit 1
+      EXIT_CODE=1
+      break
     fi
   fi
 
 done < <(docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1)
 
-# Should not reach here (process substitution ended unexpectedly)
+# Exit with the code set during monitoring
+if [ -n "$EXIT_CODE" ]; then
+  exit $EXIT_CODE
+fi
+
+# Should not reach here (process substitution ended without setting exit code)
 echo ""
 echo -e "${RED}✗ Monitoring stopped unexpectedly${NC}"
 exit 1
