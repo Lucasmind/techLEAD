@@ -76,6 +76,13 @@ START_TIMESTAMP=""
 TIMEOUT=300  # 5 minutes to wait for job start
 START_WAIT=$(date +%s)
 
+# If job already running, we need to skip historical completions in the tail buffer
+# Only process completions that come AFTER we see the current "Running job" line
+SEEN_CURRENT_RUN=false
+if [ "$JOB_ALREADY_RUNNING" = false ]; then
+  SEEN_CURRENT_RUN=true  # Not already running, so process all lines normally
+fi
+
 # Tail Docker logs - use --tail to get recent lines + follow for reliable behavior
 # This avoids issues with --since and relative times when combined with -f
 docker logs -f --tail 1000 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
@@ -94,6 +101,7 @@ docker logs -f --tail 1000 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
 
   # Detect job start
   if echo "$LINE" | grep -qE "Running job: $JOB_NAME"; then
+    SEEN_CURRENT_RUN=true  # Mark that we've seen the current running instance
     if [ "$JOB_STARTED" = false ]; then
       JOB_STARTED=true
       START_TIMESTAMP=$(echo "$LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -104,8 +112,9 @@ docker logs -f --tail 1000 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
     fi
   fi
 
-  # Detect job completion
-  if echo "$LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
+  # Detect job completion - but only if we've seen the current run
+  # This prevents processing old completion messages from the tail buffer
+  if [ "$SEEN_CURRENT_RUN" = true ] && echo "$LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
     END_TIMESTAMP=$(echo "$LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
 
     echo ""
