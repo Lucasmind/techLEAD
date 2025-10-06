@@ -36,29 +36,48 @@ LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
 
 # Check if the last line shows our job completed
 if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  # Extract timestamp from log line
+  LOG_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z')
 
-  if echo "$LAST_LINE" | grep -q "Succeeded"; then
-    echo -e "${GREEN}✓ Job already completed: SUCCESS${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    exit 0
-  elif echo "$LAST_LINE" | grep -q "Failed"; then
-    echo -e "${RED}✗ Job already completed: FAILED${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
-    exit 1
+  if [ -n "$LOG_TIMESTAMP" ]; then
+    # Convert to epoch seconds
+    LOG_TIME=$(date -d "$LOG_TIMESTAMP" +%s 2>/dev/null || echo "0")
+    CURRENT_TIME=$(date +%s)
+    AGE=$((CURRENT_TIME - LOG_TIME))
+
+    # Only treat as current job if completed within last 30 seconds
+    if [ "$LOG_TIME" != "0" ] && [ "$AGE" -le 30 ]; then
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      if echo "$LAST_LINE" | grep -q "Succeeded"; then
+        echo -e "${GREEN}✓ Job already completed: SUCCESS${NC}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        exit 0
+      elif echo "$LAST_LINE" | grep -q "Failed"; then
+        echo -e "${RED}✗ Job already completed: FAILED${NC}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
+        exit 1
+      else
+        RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
+        echo -e "${YELLOW}Job already completed: $RESULT${NC}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        exit 1
+      fi
+    else
+      # Old completion (>30s ago) - waiting for new job
+      echo -e "${GRAY}Old job completion detected (${AGE}s ago), waiting for new job...${NC}"
+      JOB_ALREADY_RUNNING=false
+    fi
   else
-    RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
-    echo -e "${YELLOW}Job already completed: $RESULT${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    exit 1
+    # Couldn't parse timestamp, treat as waiting
+    echo -e "${GRAY}Waiting for job to start...${NC}"
+    JOB_ALREADY_RUNNING=false
   fi
-fi
-
-# Check if the last line shows our job currently running
-if echo "$LAST_LINE" | grep -qE "Running job: $JOB_NAME"; then
+elif echo "$LAST_LINE" | grep -qE "Running job: $JOB_NAME"; then
+  # Job is currently running
   echo -e "${GREEN}✓ Job already running${NC}"
   echo ""
   echo -e "${GRAY}Monitoring in progress...${NC}"
@@ -83,9 +102,9 @@ if [ "$JOB_ALREADY_RUNNING" = false ]; then
   SEEN_CURRENT_RUN=true  # Not already running, so process all lines normally
 fi
 
-# Tail Docker logs - use --tail to get recent lines + follow for reliable behavior
-# This avoids issues with --since and relative times when combined with -f
-docker logs -f --tail 1000 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
+# Tail Docker logs - use --tail 2 to capture current state (single-threaded runner)
+# Line 1: Previous state, Line 2: Current state, then -f follows new lines
+docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1 | while IFS= read -r LINE; do
 
   # Check timeout for job start
   if [ "$JOB_STARTED" = false ]; then
