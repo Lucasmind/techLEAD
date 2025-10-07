@@ -196,7 +196,7 @@ while IFS= read -r LINE; do
     fi
   fi
 
-done < <(docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1)
+done < <(stdbuf -oL docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1)
 
 # Exit with the code set during monitoring
 if [ -n "$EXIT_CODE" ]; then
