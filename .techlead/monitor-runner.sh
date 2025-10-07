@@ -112,42 +112,59 @@ if [ "$JOB_ALREADY_RUNNING" = false ]; then
   SEEN_CURRENT_RUN=true  # Not already running, so process all lines normally
 fi
 
-# Tail Docker logs - use --tail 2 to capture current state (single-threaded runner)
-# Line 1: Previous state, Line 2: Current state, then -f follows new lines
-# Use process substitution and break to exit cleanly
-EXIT_CODE=""
-while IFS= read -r LINE; do
+# Poll docker logs every 10 seconds (no streaming, clean exit)
+# Check for job start, then poll for completion
+POLL_INTERVAL=10
+MAX_WAIT_FOR_START=300  # 5 minutes to wait for job to start
 
-  # Check timeout for job start
-  if [ "$JOB_STARTED" = false ]; then
-    CURRENT_TIME=$(date +%s)
-    ELAPSED=$((CURRENT_TIME - START_WAIT))
+echo -e "${GRAY}Polling for job status...${NC}"
 
-    if [ $ELAPSED -gt $TIMEOUT ]; then
-      echo ""
-      echo -e "${RED}✗ Timeout: Job '$JOB_NAME' did not start within ${TIMEOUT}s${NC}"
-      EXIT_CODE=1
+# Wait for job to start
+WAIT_START=$(date +%s)
+while true; do
+  LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
+
+  # Check if job is running
+  if echo "$LAST_LINE" | grep -qE "Running job: $JOB_NAME"; then
+    START_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
+    echo -e "${GREEN}✓ Job started${NC} ($START_TIMESTAMP)"
+    echo ""
+    echo -e "${GRAY}Polling for completion (checking every ${POLL_INTERVAL}s)...${NC}"
+    echo ""
+    JOB_STARTED=true
+    break
+  fi
+
+  # Check if job already completed (race condition)
+  if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
+    # Verify this isn't an old completion by checking recent logs
+    RECENT_LOGS=$(docker logs --tail 10 "$CONTAINER_NAME" 2>&1)
+    if echo "$RECENT_LOGS" | grep -qE "Running job: $JOB_NAME"; then
+      # Job ran and completed very quickly
+      JOB_STARTED=true
       break
     fi
   fi
 
-  # Detect job start
-  if echo "$LINE" | grep -qE "Running job: $JOB_NAME"; then
-    SEEN_CURRENT_RUN=true  # Mark that we've seen the current running instance
-    if [ "$JOB_STARTED" = false ]; then
-      JOB_STARTED=true
-      START_TIMESTAMP=$(echo "$LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
-      echo -e "${GREEN}✓ Job started${NC} ($START_TIMESTAMP)"
-      echo ""
-      echo -e "${GRAY}Running... (this may take several minutes)${NC}"
-      echo ""
-    fi
+  # Check timeout
+  CURRENT_TIME=$(date +%s)
+  ELAPSED=$((CURRENT_TIME - WAIT_START))
+  if [ $ELAPSED -gt $MAX_WAIT_FOR_START ]; then
+    echo ""
+    echo -e "${RED}✗ Timeout: Job '$JOB_NAME' did not start within ${MAX_WAIT_FOR_START}s${NC}"
+    exit 1
   fi
 
-  # Detect job completion - but only if we've seen the current run
-  # This prevents processing old completion messages from the tail buffer
-  if [ "$SEEN_CURRENT_RUN" = true ] && echo "$LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
-    END_TIMESTAMP=$(echo "$LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
+  sleep $POLL_INTERVAL
+done
+
+# Poll for job completion
+while true; do
+  LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
+
+  # Check if job completed
+  if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
+    END_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -169,41 +186,37 @@ while IFS= read -r LINE; do
       DURATION_STR="unknown"
     fi
 
-    # Check result and break
-    if echo "$LINE" | grep -q "Succeeded"; then
+    # Check result: Succeeded, Failed, or Canceled
+    if echo "$LAST_LINE" | grep -q "Succeeded"; then
       echo -e "${GREEN}✓ SUCCESS${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      EXIT_CODE=0
-      break
+      exit 0
 
-    elif echo "$LINE" | grep -q "Failed"; then
+    elif echo "$LAST_LINE" | grep -q "Failed"; then
       echo -e "${RED}✗ FAILED${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo ""
       echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
-      EXIT_CODE=1
-      break
+      exit 1
+
+    elif echo "$LAST_LINE" | grep -q "Canceled"; then
+      echo -e "${YELLOW}⚠ CANCELED${NC} ($END_TIMESTAMP)"
+      echo -e "${GRAY}Duration: $DURATION_STR${NC}"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo -e "${YELLOW}Job was canceled (manual intervention or timeout)${NC}"
+      exit 1
 
     else
-      RESULT=$(echo "$LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
+      RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
       echo -e "${YELLOW}Job completed: $RESULT${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      EXIT_CODE=1
-      break
+      exit 1
     fi
   fi
 
-done < <(stdbuf -oL docker logs -f --tail 2 "$CONTAINER_NAME" 2>&1)
-
-# Exit with the code set during monitoring
-if [ -n "$EXIT_CODE" ]; then
-  exit $EXIT_CODE
-fi
-
-# Should not reach here (process substitution ended without setting exit code)
-echo ""
-echo -e "${RED}✗ Monitoring stopped unexpectedly${NC}"
-exit 1
+  sleep $POLL_INTERVAL
+done
