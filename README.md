@@ -501,6 +501,69 @@ Same as single issue, but automatically continues to next issue:
 
 ---
 
+## Creating Issues
+
+When creating GitHub issues for techLEAD to work on, follow these guidelines:
+
+### What to Include
+
+**DO include:**
+- ✅ Clear description of the feature or bug
+- ✅ Acceptance criteria (what defines "done")
+- ✅ Use cases or problem statements
+- ✅ Specific technical constraints (if any)
+- ✅ API preferences or architectural guidance (if critical)
+
+**DON'T include:**
+- ❌ Testing requirements or test cases
+- ❌ Detailed implementation steps (unless critical)
+- ❌ Code snippets or solutions (let @claude decide)
+
+### Why No Testing Requirements?
+
+techLEAD's **test-builder subagent** automatically:
+- Analyzes implementation changes
+- Follows existing test patterns in your codebase
+- Creates comprehensive tests (unit + integration)
+- Aims for >80% coverage
+- Iterates until tests pass
+
+**Example: Good Issue**
+```markdown
+## Description
+Add rate limiting to API endpoints to prevent abuse
+
+## Acceptance Criteria
+- [ ] Limit: 100 requests per minute per IP
+- [ ] Return 429 status when limit exceeded
+- [ ] Include rate limit headers in response
+
+## Implementation Notes
+- Use existing Redis instance for rate tracking
+```
+
+**Example: Avoid This**
+```markdown
+## Description
+Add rate limiting
+
+## Testing Requirements  ← Don't include this!
+- Test rate limit enforcement
+- Test header responses
+- Test Redis connection
+...
+```
+
+### GitHub Issue Templates
+
+This repository includes issue templates that automatically exclude testing sections:
+- **Feature Request** (`.github/ISSUE_TEMPLATE/feature.md`)
+- **Bug Report** (`.github/ISSUE_TEMPLATE/bug.md`)
+
+These templates guide you to provide the right information for techLEAD.
+
+---
+
 ## Monitoring
 
 techLEAD uses **Docker log monitoring** for real-time runner feedback:
