@@ -93,17 +93,60 @@ _To be learned over time_
 
 ### Critical Execution Pattern
 
-After posting @claude comment:
-1. Post comment with `gh issue comment`
-2. **IMMEDIATELY** run `.techlead/monitor.sh implement`
-3. Script blocks until completion
-4. Check exit code: 0 = success, 1 = failure
-5. If failure: STOP and report to PM (don't continue)
+After posting @claude comment, use retry loop for long-running jobs (20-30 minutes):
+
+```bash
+# 1. Post comment
+gh issue comment <number> --body "@claude [guidance]"
+
+# 2. Monitor with retry loop (Claude Code times out after ~10 min)
+JOB_START_TIMESTAMP=""
+
+while true; do
+  .techlead/monitor.sh implement
+  EXIT_CODE=$?
+
+  # Job completed (0=success, 1=failure)
+  if exit code is 0 or 1; then
+    if failed: STOP and report to PM
+    break
+  fi
+
+  # Timed out - check if job still running
+  LAST_LINE=$(docker logs --tail 1 <container>)
+
+  if still running "Running job: claude"; then
+    # First time: capture start timestamp
+    if no timestamp yet; then
+      JOB_START_TIMESTAMP = extract from LAST_LINE
+      echo "Long-running job, will keep monitoring..."
+    fi
+
+    # Verify same job (timestamp matches)
+    if timestamp matches; then
+      echo "Relaunching monitor..."
+      continue  # Retry
+    else
+      STOP - different job detected
+    fi
+  else
+    # Completed between checks - verify result
+    if completed line found; then
+      break with appropriate exit
+    fi
+  fi
+done
+```
+
+**Same pattern applies to:**
+- `.techlead/monitor.sh implement` (implementation jobs)
+- `.techlead/monitor.sh review` (code review jobs)
 
 **Never:**
 - Check in after posting comment
 - Wait before starting monitor
 - Continue after monitor failure
+- Assume timeout = failure (may still be running)
 
 ### Branch Synchronization
 

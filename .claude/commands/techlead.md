@@ -202,18 +202,65 @@ git push origin "before-issue-<number>"
 # 1. Post @claude comment with guidance (use gh issue comment)
 gh issue comment <issue_number> --body "@claude [guidance]"
 
-# 2. IMMEDIATELY start monitoring (blocking)
-.techlead/monitor.sh implement
+# 2. Monitor with retry loop (jobs can take 20-30 minutes)
+JOB_START_TIMESTAMP=""
 
-# 3. Script blocks until job completes
-# 4. Script returns exit code: 0 = success, 1 = failure
-# 5. Check exit code: if 1, STOP and report to PM
+while true; do
+  # Launch monitor.sh (times out after ~10 minutes from Claude Code)
+  .techlead/monitor.sh implement
+  EXIT_CODE=$?
+
+  # If job completed (success=0, failure=1), we're done
+  if [ $EXIT_CODE -eq 0 ] || [ $EXIT_CODE -eq 1 ]; then
+    # Check exit code: if 1, STOP and report to PM
+    if [ $EXIT_CODE -eq 1 ]; then
+      STOP and report failure to PM
+    fi
+    break
+  fi
+
+  # Monitor timed out - check if job is still running
+  LAST_LINE=$(docker logs --tail 1 trendlenspro-runner 2>&1)
+
+  if echo "$LAST_LINE" | grep -q "Running job: claude"; then
+    # Capture start timestamp on first iteration
+    if [ -z "$JOB_START_TIMESTAMP" ]; then
+      JOB_START_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z')
+      echo "Long-running job detected, will keep monitoring..."
+      echo "Job started: $JOB_START_TIMESTAMP"
+    fi
+
+    # Verify we're still watching the same job (timestamp matches)
+    CURRENT_START=$(docker logs trendlenspro-runner 2>&1 | grep "Running job: claude" | tail -1)
+    if echo "$CURRENT_START" | grep -q "$JOB_START_TIMESTAMP"; then
+      echo "Job still running, relaunching monitor... (elapsed: check logs)"
+      continue  # Relaunch monitor.sh
+    else
+      echo "Different job detected, something is wrong"
+      STOP and report to PM
+      break
+    fi
+  else
+    # Job completed while we were checking, verify result
+    if echo "$LAST_LINE" | grep -q "Job claude completed with result:"; then
+      if echo "$LAST_LINE" | grep -q "Succeeded"; then
+        echo "Job completed successfully"
+        break
+      else
+        echo "Job failed"
+        STOP and report to PM
+        break
+      fi
+    fi
+  fi
+done
 ```
 
 **DO NOT:**
 - Check in after posting comment
 - Wait for confirmation before monitoring
-- Continue if monitor.sh exits with code 1
+- Continue if job fails
+- Assume timeout means failure (job may still be running)
 
 ### 4. Branch Synchronization
 
