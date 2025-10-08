@@ -161,10 +161,27 @@ done
 # Poll for job completion
 while true; do
   LAST_LINE=$(docker logs --tail 1 "$CONTAINER_NAME" 2>&1)
+  COMPLETION_LINE=""
 
-  # Check if job completed
+  # Check if our job completed (last line shows completion)
   if echo "$LAST_LINE" | grep -qE "Job $JOB_NAME completed with result:"; then
-    END_TIMESTAMP=$(echo "$LAST_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
+    COMPLETION_LINE="$LAST_LINE"
+
+  # Check if a DIFFERENT job is running (race condition: our job completed, next job started)
+  elif echo "$LAST_LINE" | grep -qE "Running job:" && ! echo "$LAST_LINE" | grep -q "Running job: $JOB_NAME"; then
+    # Different job running - check last 2 lines for our completion
+    LAST_TWO=$(docker logs --tail 2 "$CONTAINER_NAME" 2>&1)
+    SECOND_TO_LAST=$(echo "$LAST_TWO" | head -1)
+
+    if echo "$SECOND_TO_LAST" | grep -qE "Job $JOB_NAME completed with result:"; then
+      COMPLETION_LINE="$SECOND_TO_LAST"
+      echo -e "${GRAY}(Detected completion before next job started)${NC}"
+    fi
+  fi
+
+  # Process completion if found
+  if [ -n "$COMPLETION_LINE" ]; then
+    END_TIMESTAMP=$(echo "$COMPLETION_LINE" | grep -oP '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z' || date -u +%Y-%m-%dT%H:%M:%SZ)
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -187,13 +204,13 @@ while true; do
     fi
 
     # Check result: Succeeded, Failed, or Canceled
-    if echo "$LAST_LINE" | grep -q "Succeeded"; then
+    if echo "$COMPLETION_LINE" | grep -q "Succeeded"; then
       echo -e "${GREEN}✓ SUCCESS${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       exit 0
 
-    elif echo "$LAST_LINE" | grep -q "Failed"; then
+    elif echo "$COMPLETION_LINE" | grep -q "Failed"; then
       echo -e "${RED}✗ FAILED${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -201,7 +218,7 @@ while true; do
       echo -e "${YELLOW}Check logs:${NC} docker logs $CONTAINER_NAME"
       exit 1
 
-    elif echo "$LAST_LINE" | grep -q "Canceled"; then
+    elif echo "$COMPLETION_LINE" | grep -q "Canceled"; then
       echo -e "${YELLOW}⚠ CANCELED${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -210,7 +227,7 @@ while true; do
       exit 1
 
     else
-      RESULT=$(echo "$LAST_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
+      RESULT=$(echo "$COMPLETION_LINE" | grep -oP 'result: \K\w+' || echo "Unknown")
       echo -e "${YELLOW}Job completed: $RESULT${NC} ($END_TIMESTAMP)"
       echo -e "${GRAY}Duration: $DURATION_STR${NC}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
