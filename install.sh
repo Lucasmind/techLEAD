@@ -187,6 +187,14 @@ EOF
         cp "$TECHLEAD_DIR/install.sh" .techlead/
         cp "$TECHLEAD_DIR/uninstall.sh" .techlead/
 
+        # Update issue templates
+        echo -e "${GREEN}Updating GitHub issue templates...${NC}"
+        if [ -d "$TECHLEAD_DIR/.github/ISSUE_TEMPLATE" ]; then
+            mkdir -p .github/ISSUE_TEMPLATE
+            cp "$TECHLEAD_DIR/.github/ISSUE_TEMPLATE"/* .github/ISSUE_TEMPLATE/ 2>/dev/null || true
+            echo "✓ Issue templates updated"
+        fi
+
         echo ""
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${GREEN}✓ Upgrade Complete!${NC}"
@@ -198,6 +206,7 @@ EOF
         echo "  ✓ Hooks (state tracking)"
         echo "  ✓ Subagents (test-builder, code-analyzer, final-validator)"
         echo "  ✓ Permissions (auto-configured)"
+        echo "  ✓ Issue templates (guides issue creation)"
         echo ""
         echo "Preserved:"
         echo "  ✓ Your container name and config"
@@ -335,6 +344,19 @@ chmod +x .techlead/*.sh .techlead/hooks/*.sh
 
 echo "installed:.techlead/" >> .techlead/install.log
 echo "✓ Scripts copied"
+
+# Copy GitHub issue templates
+echo ""
+echo -e "${GREEN}Installing GitHub issue templates...${NC}"
+if [ -d "$TECHLEAD_DIR/.github/ISSUE_TEMPLATE" ]; then
+    mkdir -p .github/ISSUE_TEMPLATE
+    cp "$TECHLEAD_DIR/.github/ISSUE_TEMPLATE"/* .github/ISSUE_TEMPLATE/ 2>/dev/null || true
+    echo "installed:.github/ISSUE_TEMPLATE/" >> .techlead/install.log
+    echo "✓ Issue templates installed"
+    echo "  Templates guide issue creation (exclude testing requirements)"
+else
+    echo -e "${YELLOW}⚠ Issue templates not found in source${NC}"
+fi
 
 # Backup existing workflows and runner config
 if [ "$RUNNER_MODE" != "3" ]; then
