@@ -342,15 +342,65 @@ git branch --show-current
 
 ### 5. Testing
 
+**CRITICAL: Provide comprehensive context to test-builder to avoid placeholder tests**
+
 ```bash
 # Pull latest changes
 git pull origin <branch_name>
 
-# Spawn test-builder
-# Use Task tool with test-builder subagent
-# Review test results
-# Commit and push tests
+# Gather implementation details
+BRANCH_NAME=$(git branch --show-current)
+FILES_CHANGED=$(git diff --name-only origin/main...)
+GIT_DIFF=$(git diff origin/main...)
 ```
+
+**Spawn test-builder with detailed prompt:**
+
+Use Task tool with test-builder subagent and provide:
+
+1. **Branch name**: Current feature branch
+2. **Files changed**: List of modified files
+3. **Full git diff**: Complete implementation code
+4. **Explicit anti-placeholder instruction**: "Create REAL, COMPREHENSIVE tests - NOT placeholders or TODOs"
+5. **Coverage requirements**: >80% with happy path, edge cases, errors
+6. **Specific test scenarios**: Based on implementation analysis
+
+**Example prompt template:**
+```
+Create comprehensive tests for the implementation on branch: {branch_name}
+
+Files changed:
+{file_list}
+
+Implementation diff:
+{git_diff}
+
+CRITICAL REQUIREMENTS:
+- DO NOT create placeholder tests, stub tests, or TODO tests
+- Create REAL, WORKING tests with actual assertions
+- Analyze the implementation code thoroughly
+- Test ALL new functions, classes, and methods
+- Include happy path tests with real input/output assertions
+- Include edge case tests (null, undefined, empty, boundary values)
+- Include error scenario tests with proper error assertions
+- Follow existing project test patterns exactly
+- Aim for >80% code coverage
+- Run tests and iterate until all pass
+
+Review existing tests in the project to understand:
+- Testing framework and patterns
+- Assertion style
+- Mock/stub patterns
+- File naming and location conventions
+
+Your tests must be production-ready, not placeholders.
+```
+
+After test-builder completes:
+- Review the tests it created
+- Verify they are NOT placeholders
+- If placeholders detected, re-run with stronger instructions
+- Commit and push when tests are real and passing
 
 ### 6. Pull Request Creation
 
