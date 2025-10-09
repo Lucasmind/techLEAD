@@ -19,6 +19,25 @@ Good vibes to you! ✌️
 
 ---
 
+## Security & Usage Notes
+
+**Intended Use Case**: techLEAD works best as a **personal development tool** or with a **small trusted team in a private repository**. It's not designed for large open-source projects with many external contributors.
+
+**Why?** techLEAD triggers on GitHub issue comments and titles (like `@claude`). In an open repo, anyone can create issues or comments, which could be a security concern. In a personal or private team repo, you control who has access, so you're only triggering automation on content you trust.
+
+**For Full Autonomy**: To get the most out of techLEAD's autonomous workflows without constant permission prompts, consider running Claude Code with the `--dangerously-skip-permissions` flag when using the `/techlead` command:
+
+```bash
+# Add to your Claude Code launch or settings
+claude-code --dangerously-skip-permissions
+```
+
+⚠️ **Note**: This flag allows Claude to execute commands without asking permission each time. Only use this in repositories you trust and own. This is what makes techLEAD truly autonomous - it can coordinate GitHub runners, create PRs, run tests, and merge without interrupting you for every action.
+
+**Bottom line**: If you're the only one (or working with a small trusted team) on your repo, techLEAD is safe and powerful. If you're running a public open-source project with external contributors, you'll want to be more cautious about who can trigger @claude automation.
+
+---
+
 ## Overview
 
 techLEAD is an AI-powered technical leader that autonomously manages software development workflows. Built natively on Claude Code, it makes strategic decisions, coordinates GitHub Actions runners, and ensures high-quality code delivery.
