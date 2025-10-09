@@ -30,6 +30,302 @@ techLEAD is an AI-powered technical leader that autonomously manages software de
 
 ---
 
+## How It Works: A Typical Workflow
+
+Here's what a day with techLEAD looks like, whether you're starting a new project or working on an existing codebase.
+
+### 1. Planning Your Work
+
+**Create issues with AI assistance:**
+```bash
+You: /techlead-issue
+
+Claude: What would you like to create an issue for?
+
+You: Add user authentication with JWT tokens
+
+Claude: [Detects: Feature, Security-relevant]
+Let me help you create a comprehensive feature issue...
+
+[Conversational extraction of requirements]
+
+✓ Issue #42 created: Add JWT authentication
+  Labels: enhancement, security
+  Related: Issue #38 (API endpoints)
+```
+
+**Benefits:**
+- Consistent issue formatting across your team
+- No forgotten requirements or edge cases
+- Automatic linking of related work
+- Testing requirements excluded (techLEAD handles this)
+
+### 2. Starting Work
+
+**Initialize techLEAD:**
+```bash
+You: /techlead
+
+techLEAD: Checking for in-progress work... None found.
+
+Found 5 open issues:
+  #42 [enhancement, security] Add JWT authentication
+  #43 [bug] Login form validation error
+  #44 [enhancement] Add rate limiting
+  ...
+
+Would you like to:
+  a) Work on a single issue
+  b) Work on a sequence (multiple related issues)
+
+You: Work on issue 42
+
+techLEAD: Creating checkpoint: before-issue-42
+Analyzing issue #42...
+
+[Classifies as: Security Feature]
+[Loads: security-fix.md guidance template]
+[Populates with: requirements, affected files, patterns]
+
+Ready to post guidance to @claude runner. Proceed? (yes/no)
+
+You: yes
+```
+
+### 3. Autonomous Execution
+
+**techLEAD orchestrates the workflow:**
+
+```
+techLEAD: ✓ Posted @claude comment with structured guidance
+          ⏳ Monitoring implementation (blocking)...
+
+[GitHub Actions runner starts in background]
+@claude: Creating branch: issue-42-add-jwt-authentication
+@claude: Installing dependencies...
+@claude: Implementing JWT middleware...
+@claude: Adding authentication routes...
+@claude: ✓ Implementation complete
+
+techLEAD: ✓ Implementation succeeded (12 minutes)
+          Synchronizing local branch...
+          ✓ Branch synced: issue-42-add-jwt-authentication
+
+          Spawning test-builder subagent...
+
+test-builder: Analyzing implementation changes...
+test-builder: Found: AuthMiddleware, JWTService, AuthController
+test-builder: Creating unit tests... ✓
+test-builder: Creating integration tests... ✓
+test-builder: Running tests... ✓ (coverage: 87%)
+test-builder: Committing tests... ✓
+
+techLEAD: ✓ Tests complete
+          Creating pull request...
+
+✓ PR #123 created: Add JWT authentication
+  Auto-triggered @claude-review...
+```
+
+### 4. Code Review Loop
+
+**Automated review and iteration:**
+
+```
+techLEAD: ⏳ Monitoring code review (blocking)...
+
+@claude-review: Analyzing PR #123...
+@claude-review: Found 3 issues:
+  - CRITICAL: JWT secret hardcoded in middleware
+  - IMPORTANT: Missing token expiration check
+  - OPTIONAL: Consider using refresh tokens
+
+techLEAD: ✓ Review complete
+          Spawning code-analyzer subagent...
+
+code-analyzer: Categorized feedback:
+  🔴 CRITICAL (1): Security vulnerability
+  🟡 IMPORTANT (1): Missing functionality
+  ⚪ OPTIONAL (1): Enhancement suggestion
+
+  Priority: Fix critical and important items
+  Estimated time: 15 minutes
+
+techLEAD: Posting fix request to @claude runner...
+          ⏳ Monitoring implementation (blocking)...
+
+@claude: Fixing issues...
+@claude: - Moved JWT secret to environment variable
+@claude: - Added token expiration validation
+@claude: ✓ Fixes pushed
+
+techLEAD: ✓ Fixes complete
+          ⏳ Waiting for re-review (blocking)...
+
+@claude-review: Re-analyzing PR #123...
+@claude-review: ✓ All critical issues resolved
+@claude-review: ✓ Approved for merge
+
+techLEAD: ✓ Review clean (no changes requested)
+```
+
+### 5. Pre-Merge Validation
+
+**Comprehensive quality checks:**
+
+```
+techLEAD: Spawning final-validator subagent...
+
+final-validator: Running pre-merge validation...
+final-validator: ✓ Unit tests passing (87% coverage)
+final-validator: ✓ Integration tests passing
+final-validator: ✓ Linting passed
+final-validator: ✓ Build successful
+final-validator: ✓ E2E tests passing (Playwright)
+final-validator: ✓ GitHub checks passing
+
+techLEAD: ✓ All validations passed
+
+Ready to merge PR #123. Approve? (yes/no)
+
+You: yes
+```
+
+### 6. Completion & Memory
+
+**Merge and checkpoint:**
+
+```
+techLEAD: Merging PR #123... ✓
+          Closing issue #42... ✓
+          Creating checkpoint: after-issue-42
+          Updating project memory...
+
+✓ Issue #42 completed successfully
+  - Implementation: 12 minutes
+  - Testing: 8 minutes
+  - Review & fixes: 15 minutes
+  - Total: 35 minutes
+
+Updated CLAUDE.md with learned patterns:
+  - JWT authentication implementation
+  - Environment variable pattern
+  - Token expiration best practices
+
+Continue with next issue? (yes/no)
+```
+
+### Key Interactions Explained
+
+**techLEAD (Orchestrator)**
+- Lives in your Claude Code session
+- Makes strategic decisions
+- Coordinates all actors
+- Maintains project memory
+- Monitors via Docker logs (self-hosted) or GitHub UI (cloud-hosted)
+
+**@claude (Implementation Runner)**
+- GitHub Actions runner (cloud or self-hosted)
+- Receives structured guidance from techLEAD
+- Writes implementation code
+- Creates branches and commits
+- Responds to fix requests
+
+**@claude-review (Code Review Runner)**
+- Auto-triggered on PR creation
+- Analyzes code quality and security
+- Categorizes issues by severity
+- Re-reviews after fixes
+
+**Subagents (Local)**
+- `test-builder`: Creates comprehensive tests following project patterns
+- `code-analyzer`: Interprets review feedback, prioritizes actions
+- `final-validator`: Pre-merge quality gate (tests, linting, builds, E2E)
+
+**Monitoring**
+
+For **self-hosted runners**, techLEAD uses real-time Docker log monitoring:
+```bash
+# Automatically called by techLEAD
+.techlead/monitor.sh implement  # Watches @claude
+.techlead/monitor.sh review     # Watches @claude-review
+```
+
+For **GitHub-hosted runners**, monitor via:
+- GitHub Actions UI (Repository → Actions tab)
+- Command line: `gh run watch`
+
+### Working in Sprints
+
+**Multi-issue sequences:**
+
+```bash
+You: /techlead
+
+techLEAD: Found 5 related issues tagged 'auth-sprint':
+  #42 JWT authentication
+  #44 Rate limiting
+  #45 Session management
+
+Work as sequence? (yes/no)
+
+You: yes
+
+techLEAD: Creating sequence checkpoint: before-seq-auth-sprint-20251009
+
+          Sequence plan:
+            1. Issue #42 - JWT authentication (estimated: 40 min)
+            2. Issue #44 - Rate limiting (estimated: 30 min)
+            3. Issue #45 - Session management (estimated: 25 min)
+
+          I'll proceed autonomously through all issues.
+          You'll see progress via checklist updates.
+          I'll only stop for failures or critical decisions.
+
+          Proceed? (yes/no)
+
+You: yes
+
+techLEAD: [Autonomously executes all 3 issues]
+
+✓ Sequence complete (95 minutes total)
+  Creating checkpoint: after-seq-auth-sprint-20251009
+
+All changes merged to main. Authentication sprint complete! 🎉
+```
+
+### Rollback Protection
+
+**Safe experimentation:**
+
+If something goes wrong, rollback to any checkpoint:
+
+```bash
+You: /rollback
+
+Claude: Available rollback points:
+  - after-issue-42: Keep JWT auth, remove later work
+  - before-seq-auth-sprint: Remove entire auth sprint
+  - before-issue-42: Remove all auth work
+
+You: Rollback to before-issue-42
+
+Claude: This will:
+  ✓ Keep: All work before issue #42
+  ✗ Remove: JWT auth, rate limiting, session management
+
+  Force push required. Confirm? (yes/no)
+
+You: yes
+
+Claude: ✓ Rolled back to before-issue-42
+        Reopened issues: #42, #44, #45
+
+Ready to start fresh!
+```
+
+---
+
 ## Quick Start
 
 ### Three Installation Modes
