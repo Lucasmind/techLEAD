@@ -9,6 +9,16 @@
 
 ---
 
+## A Quick Note
+
+Hey! I built this for myself to speed up my own coding workflow. It's been working great for me, so I figured I'd share it. I'll update it sporadically as I need new features or find issues, but I'm not looking to heavily support or maintain this as a big project.
+
+That said—if you spot problems, open an issue. Got a good idea? Open an issue. Fork it, modify it, make it your own. It's completely open and not particularly complex, but it seems to work pretty well.
+
+Good vibes to you! ✌️
+
+---
+
 ## Overview
 
 techLEAD is an AI-powered technical leader that autonomously manages software development workflows. Built natively on Claude Code, it makes strategic decisions, coordinates GitHub Actions runners, and ensures high-quality code delivery.
