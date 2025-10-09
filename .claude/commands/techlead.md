@@ -177,13 +177,75 @@ gh issue list --limit 100
 # Get approval for single issue or sequence
 ```
 
-### 2. Issue Analysis
+### 2. Issue Analysis & Guidance Preparation
 
-For each issue:
-- Read full issue description
+**Step 2a: Classify Issue Type**
+
+Analyze issue content to determine type:
+- **Security**: Keywords: "security", "vulnerability", "exploit", "inject", "XSS", "CSRF"
+- **Bug**: Keywords: "broken", "error", "crash", "fails", "doesn't work"
+- **Feature**: Keywords: "add", "new", "feature", "implement", "create"
+- **Enhancement**: Keywords: "improve", "better", "enhance", "optimize"
+- **Refactoring**: Keywords: "refactor", "cleanup", "restructure", "tech debt"
+- **Performance**: Keywords: "slow", "performance", "optimize", "faster"
+
+**Step 2b: Load Appropriate Guidance Template**
+
+Based on classification, load the matching template:
+
+```bash
+# Map issue type to template file
+case $ISSUE_TYPE in
+  security)
+    TEMPLATE=".techlead/templates/guidance/security-fix.md"
+    ;;
+  bug)
+    TEMPLATE=".techlead/templates/guidance/bug-fix.md"
+    ;;
+  feature)
+    TEMPLATE=".techlead/templates/guidance/feature-implementation.md"
+    ;;
+  enhancement)
+    TEMPLATE=".techlead/templates/guidance/enhancement.md"
+    ;;
+  refactoring)
+    TEMPLATE=".techlead/templates/guidance/refactoring.md"
+    ;;
+  *)
+    # Default to feature template
+    TEMPLATE=".techlead/templates/guidance/feature-implementation.md"
+    ;;
+esac
+```
+
+**Step 2c: Populate Template with Issue Details**
+
+Extract information from issue and codebase to populate placeholders:
+
+**From Issue:**
+- `{TITLE}` - Issue title
+- `{DESCRIPTION}` - Issue body description
+- `{ACCEPTANCE_CRITERIA}` - Checklist items or explicit criteria
+- `{USE_CASE}` - Use case or problem statement
+- `{CONSTRAINTS}` - Technical constraints mentioned in issue
+
+**From Codebase Analysis:**
+- `{FILES_LIST}` - Use Grep/Glob to find related files
+- `{PATTERN_REFERENCES}` - Find similar code patterns
+- `{RELATED_FUNCTIONALITY}` - Identify related features/modules
+
+**From Context:**
+- `{BRANCH_NAME}` - Generate branch name: `issue-<number>-<short-description>`
+- `{ROOT_CAUSE}` - (For bugs) Analyze error to determine root cause
+- `{FIX_STRATEGY}` - (For bugs) Propose fix based on root cause
+
+**Step 2d: Final Review**
+
+Before posting to @claude:
+- Verify all placeholders are populated (no {VARIABLE} left)
+- Ensure guidance is clear and actionable
+- Confirm branch name follows convention
 - Check for related PRs or branches
-- Review recent commits for conflicts
-- Prepare comprehensive guidance for @claude
 
 **Create Issue Checkpoint (for sequences):**
 ```bash
@@ -199,8 +261,9 @@ git push origin "before-issue-<number>"
 **Critical sequence:**
 
 ```bash
-# 1. Post @claude comment with guidance (use gh issue comment)
-gh issue comment <issue_number> --body "@claude [guidance]"
+# 1. Post @claude comment with populated guidance template
+# Use the template populated in step 2c
+gh issue comment <issue_number> --body "$(cat populated-template.md)"
 
 # 2. Monitor with retry loop (jobs can take 20-30 minutes)
 JOB_START_TIMESTAMP=""

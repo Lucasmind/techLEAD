@@ -528,6 +528,66 @@ techLEAD's **test-builder subagent** automatically:
 - Aims for >80% coverage
 - Iterates until tests pass
 
+### AI-Assisted Issue Creation
+
+Use the `/techlead-issue` command for AI-guided issue creation with automatic classification and formatting:
+
+```bash
+/techlead-issue
+```
+
+**Features:**
+- **Conversational extraction** - Claude asks questions to gather structured information
+- **Auto-classification** - Detects issue type (feature/bug/enhancement/security/refactoring/performance)
+- **Template selection** - Uses appropriate GitHub issue template based on type
+- **Related issue detection** - Searches for similar or related issues
+- **Auto-prioritization** - Suggests labels and priority based on type
+- **Sequence suggestion** - Detects when creating multiple related issues
+
+**Example Session:**
+```
+You: /techlead-issue
+
+Claude: What would you like to create an issue for?
+
+You: We need rate limiting on the API
+
+Claude: I've analyzed your request:
+Type: Feature
+Primary focus: API rate limiting
+
+Let me help you create a feature issue.
+
+1. What's the feature title?
+
+You: Add rate limiting to API endpoints
+
+Claude: Great!
+2. Describe the feature in 1-2 sentences
+
+You: Implement rate limiting to prevent API abuse and ensure fair usage
+
+[... conversational extraction continues ...]
+
+Claude: ✓ Issue #54 created successfully!
+
+Title: Add rate limiting to API endpoints
+Labels: enhancement, api
+URL: https://github.com/user/repo/issues/54
+
+Next steps:
+  a) Start work now (/techlead)
+  b) Create more issues
+  c) Done
+```
+
+**Benefits:**
+- ✅ Consistent issue formatting across your project
+- ✅ Never forget critical information
+- ✅ Automatic exclusion of testing requirements
+- ✅ Smart linking of related issues
+- ✅ Reduced cognitive load (just describe what you want)
+
 **Example: Good Issue**
 ```markdown
 ## Description
@@ -561,6 +621,56 @@ This repository includes issue templates that automatically exclude testing sect
 - **Bug Report** (`.github/ISSUE_TEMPLATE/bug.md`)
 
 These templates guide you to provide the right information for techLEAD.
+
+### Guidance Templates
+
+techLEAD uses structured guidance templates to communicate with the @claude runner. When analyzing an issue, techLEAD:
+
+1. **Classifies the issue type** (feature/bug/enhancement/refactoring/security)
+2. **Loads the appropriate template** from `.techlead/templates/guidance/`
+3. **Populates placeholders** with issue-specific details
+4. **Posts the guidance** as an @claude comment
+
+**Available Templates:**
+- `feature-implementation.md` - New feature development
+- `bug-fix.md` - Bug fixes with root cause analysis
+- `enhancement.md` - Improvements to existing features
+- `refactoring.md` - Code restructuring without behavior changes
+- `security-fix.md` - Security vulnerability remediation
+
+**Benefits:**
+- ✅ Consistent, structured communication
+- ✅ Comprehensive context for @claude runner
+- ✅ Clear acceptance criteria and checklists
+- ✅ Automatic exclusion of testing requirements
+- ✅ Standardized branch naming and workflow
+
+**Template Structure:**
+```markdown
+@claude
+
+# {Issue Type}: {TITLE}
+
+## Context
+{BACKGROUND}
+
+## Requirements
+{ACCEPTANCE_CRITERIA}
+
+## Technical Approach
+{IMPLEMENTATION_STRATEGY}
+
+## Definition of Done
+- [ ] Implementation matches all acceptance criteria
+- [ ] Code follows existing project patterns
+- [ ] Ready for test-builder to create comprehensive tests
+
+## Instructions
+Please implement this {type} following the technical approach outlined above.
+Create a branch `{BRANCH_NAME}` and make the necessary changes.
+```
+
+These templates ensure @claude receives clear, actionable guidance for every issue.
 
 ---
 

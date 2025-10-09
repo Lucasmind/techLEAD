@@ -195,6 +195,14 @@ EOF
             echo "✓ Issue templates updated"
         fi
 
+        # Update guidance templates
+        echo -e "${GREEN}Updating guidance templates...${NC}"
+        if [ -d "$TECHLEAD_DIR/.techlead/templates" ]; then
+            mkdir -p .techlead/templates
+            cp -r "$TECHLEAD_DIR/.techlead/templates"/* .techlead/templates/ 2>/dev/null || true
+            echo "✓ Guidance templates updated"
+        fi
+
         echo ""
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${GREEN}✓ Upgrade Complete!${NC}"
@@ -202,11 +210,13 @@ EOF
         echo ""
         echo "Updated components:"
         echo "  ✓ Monitor scripts (smart job detection)"
-        echo "  ✓ /techlead command (autonomous execution)"
+        echo "  ✓ /techlead command (autonomous execution, template-based guidance)"
+        echo "  ✓ /techlead-issue command (AI-assisted issue creation)"
         echo "  ✓ Hooks (state tracking)"
         echo "  ✓ Subagents (test-builder, code-analyzer, final-validator)"
         echo "  ✓ Permissions (auto-configured)"
         echo "  ✓ Issue templates (guides issue creation)"
+        echo "  ✓ Guidance templates (structured @claude instructions)"
         echo ""
         echo "Preserved:"
         echo "  ✓ Your container name and config"
@@ -356,6 +366,19 @@ if [ -d "$TECHLEAD_DIR/.github/ISSUE_TEMPLATE" ]; then
     echo "  Templates guide issue creation (exclude testing requirements)"
 else
     echo -e "${YELLOW}⚠ Issue templates not found in source${NC}"
+fi
+
+# Copy guidance templates
+echo ""
+echo -e "${GREEN}Installing guidance templates...${NC}"
+if [ -d "$TECHLEAD_DIR/.techlead/templates" ]; then
+    mkdir -p .techlead/templates
+    cp -r "$TECHLEAD_DIR/.techlead/templates"/* .techlead/templates/ 2>/dev/null || true
+    echo "installed:.techlead/templates/" >> .techlead/install.log
+    echo "✓ Guidance templates installed"
+    echo "  Templates help techLEAD provide structured guidance to @claude"
+else
+    echo -e "${YELLOW}⚠ Guidance templates not found in source${NC}"
 fi
 
 # Backup existing workflows and runner config
