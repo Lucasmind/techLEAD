@@ -273,16 +273,14 @@ Continue with next issue? (yes/no)
 
 **Monitoring**
 
-For **self-hosted runners**, techLEAD uses real-time Docker log monitoring:
+techLEAD uses real-time Docker log monitoring with self-hosted runners:
 ```bash
 # Automatically called by techLEAD
 .techlead/monitor.sh implement  # Watches @claude
 .techlead/monitor.sh review     # Watches @claude-review
 ```
 
-For **GitHub-hosted runners**, monitor via:
-- GitHub Actions UI (Repository → Actions tab)
-- Command line: `gh run watch`
+This is essential for techLEAD's autonomous operation and is why self-hosted runners are required.
 
 ### Working in Sprints
 
@@ -357,117 +355,20 @@ Ready to start fresh!
 
 ## Quick Start
 
-### Three Installation Modes
+### Two Installation Modes
 
-**techLEAD supports three installation modes:**
+**techLEAD supports two installation modes:**
 
-| Mode | Best For | Setup Time | Cost |
-|------|----------|------------|------|
-| **GitHub-hosted** | Beginners, quick start | 5 minutes | Free tier available |
-| **Self-hosted** | Advanced users, full control | 20 minutes | Free (uses your hardware) |
-| **Orchestration-only** | Existing GitHub Actions setup | 2 minutes | Free (uses your setup) |
+| Mode | Best For | Setup Time |
+|------|----------|------------|
+| **Self-hosted** | Full control, real-time monitoring | 20 minutes |
+| **Orchestration-only** | Existing GitHub Actions setup | 2 minutes |
 
----
-
-### Option 1: GitHub-Hosted Runners (Recommended)
-
-**No Docker required!** Uses GitHub's infrastructure.
-
-⚠️ **Note:** With GitHub-hosted runners, the Docker log monitoring (`.techlead/monitor.sh`) won't work. You'll need to monitor workflow progress via GitHub Actions UI or `gh run watch`.
-
-#### Prerequisites
-- Claude Code installed
-- GitHub repository
-- GitHub CLI (`gh`) authenticated
-
-#### Setup GitHub Actions with Claude
-
-**Follow the official guide:**
-📚 [Claude Code GitHub Actions Setup](https://docs.claude.com/en/docs/claude-code/github-actions)
-
-This will guide you through:
-1. Creating the `CLAUDE_CODE_OAUTH_TOKEN` secret
-2. Setting up GitHub Actions workflows
-3. Configuring permissions
-
-#### Install techLEAD
-
-**Automated (Recommended):**
-```bash
-# Install techLEAD in your project
-cd your-project-directory
-
-# Download installer
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
-chmod +x install.sh
-
-# Run installer (interactive)
-./install.sh
-# Choose option 1 (GitHub-hosted)
-
-# Optional: Remove downloaded installer from project root
-rm install.sh
-```
-
-**Note:** The installer is copied to `.techlead/install.sh` for reference. You can safely delete the downloaded copy from your project root.
-
-**Manual:**
-```bash
-# Clone techLEAD
-git clone https://github.com/Lucasmind/techLEAD.git
-cd techLEAD
-
-# Copy to your project
-cp -r .techlead your-project/.techlead
-cp -r .github/workflows your-project/.github/workflows
-cp -r .claude your-project/.claude
-
-cd your-project
-
-# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
-if [ -f "CLAUDE.md" ]; then
-  echo -e "\n---\n" >> CLAUDE.md
-  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
-else
-  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
-fi
-
-# Edit workflows to use GitHub-hosted runners
-vim .github/workflows/claude.yml
-# Change: runs-on: [self-hosted, ...] → runs-on: ubuntu-latest
-
-vim .github/workflows/claude-code-review.yml
-# Change: runs-on: [self-hosted, ...] → runs-on: ubuntu-latest
-
-# Make scripts executable
-chmod +x .techlead/*.sh .techlead/hooks/*.sh
-```
-
-#### Usage
-
-```bash
-# Restart Claude Code (fully close and reopen)
-# This is required for the /techlead command to load
-
-# Start techLEAD
-/techlead
-```
-
-**Monitoring workflows:**
-
-Since Docker log monitoring doesn't work with GitHub-hosted runners, use:
-
-```bash
-# Watch workflow in real-time
-gh run watch
-
-# Or view in GitHub Actions UI
-# Go to: Repository → Actions tab
-```
+⚠️ **Important:** techLEAD requires real-time log monitoring via Docker, which only works with self-hosted runners. GitHub-hosted runners don't support the `.techlead/monitor.sh` scripts that are essential for techLEAD's autonomous operation.
 
 ---
 
-### Option 2: Self-Hosted Runner (Advanced)
+### Option 1: Self-Hosted Runner (Recommended)
 
 **Full control, faster execution.** Runs locally with real-time Docker log monitoring.
 
@@ -619,13 +520,13 @@ With self-hosted runners, you get real-time monitoring:
 
 ---
 
-### Option 3: Orchestration-Only (Existing Setup)
+### Option 2: Orchestration-Only (Existing Setup)
 
 **Already have Claude Code GitHub Actions?** Just add the orchestration layer.
 
 This mode is perfect if you:
 - ✅ Already have `@claude` and `@claude-review` workflows configured
-- ✅ Already have runners set up (GitHub-hosted or self-hosted)
+- ✅ Already have self-hosted runners set up
 - ✅ Just want to add the techLEAD orchestration commands
 
 #### What Gets Installed
@@ -652,7 +553,7 @@ chmod +x install.sh
 
 # Run installer (interactive)
 ./install.sh
-# Choose option 3 (Orchestration only)
+# Choose option 2 (Orchestration only)
 
 # Optional: Remove downloaded installer from project root
 rm install.sh

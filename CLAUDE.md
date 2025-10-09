@@ -329,10 +329,7 @@ gh issue comment <number> --body "@claude ..."
 # Check exit code before proceeding
 ```
 
-**Note:** These monitoring scripts only work with self-hosted runners. If using GitHub-hosted runners:
-- Monitor via GitHub Actions UI: Repository → Actions tab
-- Use `gh run watch` for command-line monitoring
-- Use `gh run list` to check status
+**Note:** These monitoring scripts require self-hosted runners with Docker access. This is essential for techLEAD's autonomous operation.
 
 ## Memory System
 
