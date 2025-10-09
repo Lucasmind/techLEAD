@@ -110,7 +110,7 @@ if [ -f ".techlead/install.log" ] && [ "$IS_SOURCE_REPO" = false ]; then
         cp -r .techlead/hooks "$UPGRADE_BACKUP/" 2>/dev/null || true
         cp .techlead/config.json "$UPGRADE_BACKUP/config.json.old" 2>/dev/null || true
         cp .claude/config.json "$UPGRADE_BACKUP/claude-config.json.old" 2>/dev/null || true
-        cp .claude/commands/techlead.md "$UPGRADE_BACKUP/techlead.md.old" 2>/dev/null || true
+        cp -r .claude/commands "$UPGRADE_BACKUP/commands.old" 2>/dev/null || true
 
         echo "✓ Backup created"
         echo ""
@@ -142,11 +142,11 @@ if [ -f ".techlead/install.log" ] && [ "$IS_SOURCE_REPO" = false ]; then
         cp "$TECHLEAD_DIR/.claude/config.json" .claude/config.json
         echo "✓ Hooks updated"
 
-        # Update slash command
-        echo -e "${GREEN}Updating /techlead command...${NC}"
+        # Update slash commands
+        echo -e "${GREEN}Updating slash commands...${NC}"
         mkdir -p .claude/commands
-        cp "$TECHLEAD_DIR/.claude/commands/techlead.md" .claude/commands/
-        echo "✓ /techlead command updated"
+        cp "$TECHLEAD_DIR/.claude/commands"/* .claude/commands/ 2>/dev/null || true
+        echo "✓ Slash commands updated (/techlead, /techlead-issue, /rollback)"
 
         # Update subagents
         echo -e "${GREEN}Updating subagents...${NC}"
@@ -210,8 +210,10 @@ EOF
         echo ""
         echo "Updated components:"
         echo "  ✓ Monitor scripts (smart job detection)"
-        echo "  ✓ /techlead command (autonomous execution, template-based guidance)"
-        echo "  ✓ /techlead-issue command (AI-assisted issue creation)"
+        echo "  ✓ Slash commands:"
+        echo "    - /techlead (autonomous execution, template-based guidance)"
+        echo "    - /techlead-issue (AI-assisted issue creation)"
+        echo "    - /rollback (checkpoint-based rollback)"
         echo "  ✓ Hooks (state tracking)"
         echo "  ✓ Subagents (test-builder, code-analyzer, final-validator)"
         echo "  ✓ Permissions (auto-configured)"
@@ -550,12 +552,13 @@ echo -e "${GREEN}Setting up techLEAD slash commands...${NC}"
 
 mkdir -p .claude/commands
 
-if [ -f "$TECHLEAD_DIR/.claude/commands/techlead.md" ]; then
-    cp "$TECHLEAD_DIR/.claude/commands/techlead.md" .claude/commands/
-    echo "installed:.claude/commands/techlead.md" >> .techlead/install.log
-    echo "✓ /techlead command installed"
+if [ -d "$TECHLEAD_DIR/.claude/commands" ]; then
+    cp "$TECHLEAD_DIR/.claude/commands"/* .claude/commands/ 2>/dev/null || true
+    echo "installed:.claude/commands/" >> .techlead/install.log
+    echo "✓ Slash commands installed (/techlead, /techlead-issue, /rollback)"
+    echo "  Note: Slash commands require full Claude Code restart to load"
 else
-    echo -e "${YELLOW}Warning: No techlead.md command found in techLEAD repository${NC}"
+    echo -e "${YELLOW}Warning: No commands directory found in techLEAD repository${NC}"
 fi
 
 # Initialize or update CLAUDE.md
