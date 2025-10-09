@@ -420,8 +420,31 @@ gh pr create --title "..." --body "..."
 # Monitor review completion (blocking)
 .techlead/monitor.sh review
 
-# When review completes, spawn code-analyzer
+# Get PR context for code-analyzer
+PR_NUMBER=<from workflow context>
+BRANCH_NAME=$(git branch --show-current)
+
+# Spawn code-analyzer with explicit context
 # Use Task tool with code-analyzer subagent
+# Provide detailed prompt:
+"Analyze code review feedback for PR #$PR_NUMBER on branch $BRANCH_NAME.
+
+CRITICAL REQUIREMENTS:
+1. Fetch ALL review data using gh commands:
+   - gh pr view $PR_NUMBER --comments
+   - gh api repos/:owner/:repo/pulls/$PR_NUMBER/reviews
+   - gh pr diff $PR_NUMBER
+
+2. Cross-reference EVERY reviewer comment with the actual implementation code
+   - Verify each concern is valid by reading the code
+   - Check if issues are already fixed elsewhere
+   - Identify reviewer misunderstandings
+
+3. Categorize into CRITICAL/IMPORTANT/OPTIONAL/IGNORE
+   - Be aggressive about IGNORE for invalid concerns
+   - Only CRITICAL for real security/functionality issues
+
+4. Provide JSON output with implementation approaches"
 
 # Review categorized feedback
 # If CRITICAL items exist:
@@ -442,12 +465,41 @@ gh pr create --title "..." --body "..."
 ### 8. Final Validation
 
 ```bash
-# Spawn final-validator
+# Get context for validation
+PR_NUMBER=<from workflow context>
+BRANCH_NAME=$(git branch --show-current)
+
+# Spawn final-validator with explicit context
 # Use Task tool with final-validator subagent
+# Provide detailed prompt:
+"Perform comprehensive pre-merge validation for PR #$PR_NUMBER on branch $BRANCH_NAME.
+
+CRITICAL REQUIREMENTS:
+1. Verify you are on branch: $BRANCH_NAME
+2. Check for NO uncommitted changes (fail if any exist)
+3. Detect project type automatically:
+   - Node.js (package.json) → npm test/lint/build
+   - Python (pyproject.toml) → pytest/flake8/build
+   - Go (go.mod) → go test/golangci-lint/go build
+   - Rust (Cargo.toml) → cargo test/clippy/build
+   - Java Maven (pom.xml) → mvn test/checkstyle/package
+   - Java Gradle (build.gradle) → ./gradlew test/check/build
+
+4. Run complete validation checklist:
+   - Environment verification (branch, uncommitted changes)
+   - Full test suite (using detected project type)
+   - Linting (using detected project type)
+   - Build (using detected project type)
+   - E2E tests if available (Playwright, Cypress)
+   - GitHub Actions checks status
+   - Branch up-to-date with main
+
+5. Provide JSON output with results for each check
+6. If ANY check fails, set overall_success: false with specific fix guidance"
 
 # Check results:
 # - If all pass: Proceed to merge
-# - If any fail: STOP and report to PM
+# - If any fail: STOP and report to PM with details
 ```
 
 ### 9. Merge and Checkpoint
