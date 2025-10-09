@@ -2,6 +2,57 @@
 
 All notable changes to techLEAD will be documented in this file.
 
+## [1.2.0] - 2025-10-09
+
+### Added
+
+#### AI-Assisted Issue Creation (/techlead-issue)
+- **Conversational issue creation** - AI guides PM through structured information extraction
+- **Auto-classification** - Detects issue type (feature/bug/enhancement/security/refactoring/performance) via keywords
+- **Template-based formatting** - Uses appropriate GitHub issue template based on detected type
+- **Related issue detection** - Searches for similar issues via `gh issue list --search`
+- **Auto-prioritization** - Suggests labels and priority based on issue classification
+- **Sequence detection** - Recognizes when creating multiple related issues
+- **Interactive workflow** - Type-specific questions for comprehensive issue capture
+
+#### Guidance Template System
+- **Template library** - `.techlead/templates/guidance/` with 5 specialized templates
+- **Structured communication** - Standardized format for techLEAD → @claude guidance
+- **Placeholder-based** - Dynamic population of `{VARIABLE}` placeholders from issues
+- **Type-specific templates**:
+  - `feature-implementation.md` - New feature development with acceptance criteria
+  - `bug-fix.md` - Bug fixes with root cause analysis and testing considerations
+  - `enhancement.md` - Improvements with value proposition and compatibility checks
+  - `refactoring.md` - Code restructuring with backward compatibility requirements
+  - `security-fix.md` - Security vulnerabilities with severity assessment
+- **Comprehensive checklists** - Definition of Done for each issue type
+- **Automatic testing exclusion** - Templates omit testing requirements (handled by test-builder)
+
+#### Integration Updates
+- **Template-based issue analysis** - /techlead command now classifies issues and loads appropriate templates
+- **Keyword classification** - Smart detection based on issue content
+- **Codebase analysis** - Populates template placeholders from affected files and patterns
+- **Branch name generation** - Standardized `issue-<number>-<description>` format
+
+### Changed
+
+#### Installation
+- **Template directory copying** - Fresh installs now include `.techlead/templates/`
+- **Upgrade path enhanced** - Upgrades preserve and update guidance templates
+- **Success message updated** - Shows new components (guidance templates, /techlead-issue)
+
+#### Documentation
+- **README.md expanded** - Added AI-Assisted Issue Creation section with example session
+- **Guidance template documentation** - Explains template system, structure, and benefits
+- **Feature highlights** - Lists all 5 templates with descriptions
+- **Benefits documented** - Consistent formatting, reduced cognitive load, smart linking
+
+### Fixed
+
+- **PROJECT_INDEX.json tracking** - Added to `.gitignore` to prevent accidental commits
+
+---
+
 ## [1.1.0] - 2025-10-05
 
 ### Added

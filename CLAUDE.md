@@ -430,6 +430,6 @@ git push origin main  # No force needed
 
 ---
 
-**Version**: 1.1.0
-**Last Updated**: 2025-10-05
+**Version**: 1.2.0
+**Last Updated**: 2025-10-09
 **Status**: Active
