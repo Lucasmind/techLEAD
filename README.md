@@ -355,108 +355,74 @@ Ready to start fresh!
 
 ## Quick Start
 
-### Two Installation Modes
+**Choose your installation method:**
 
-**techLEAD supports two installation modes:**
+| Method | Best For | Setup Time |
+|--------|----------|------------|
+| **🔌 Plugin** | Modern, easy updates, recommended | 5 minutes |
+| **📜 Script** | Full control, traditional approach | 5 minutes |
 
-| Mode | Best For | Setup Time |
-|------|----------|------------|
-| **Self-hosted** | Full control, real-time monitoring | 20 minutes |
-| **Orchestration-only** | Existing GitHub Actions setup | 2 minutes |
+Both methods support **self-hosted runners** (with real-time Docker monitoring) or **orchestration-only** mode (for existing runner setups).
 
-⚠️ **Important:** techLEAD requires real-time log monitoring via Docker, which only works with self-hosted runners. GitHub-hosted runners don't support the `.techlead/monitor.sh` scripts that are essential for techLEAD's autonomous operation.
+⚠️ **Important:** For autonomous operation with real-time monitoring, techLEAD requires self-hosted runners with Docker access. The `.techlead/monitor.sh` scripts provide real-time job status essential for techLEAD's workflow.
 
 ---
 
-### Option 1: Self-Hosted Runner (Recommended)
+### 🔌 Method 1: Plugin Installation (Recommended)
 
-**Full control, faster execution.** Runs locally with real-time Docker log monitoring.
-
-✅ **Advantage:** The `.techlead/monitor.sh` scripts work perfectly with self-hosted runners, giving you real-time job status via Docker logs.
+**Modern, easy installation via Claude Code plugin system.**
 
 #### Prerequisites
 - Claude Code installed
-- GitHub CLI (`gh`) authenticated
-- Docker installed (for runner container)
+- Git installed
 
-#### Setup GitHub Actions with Claude
-
-**Follow the official guide:**
-📚 [Claude Code GitHub Actions Setup](https://docs.claude.com/en/docs/claude-code/github-actions)
-
-This covers:
-1. Creating the `CLAUDE_CODE_OAUTH_TOKEN` secret
-2. Setting up GitHub Actions workflows
-3. Configuring permissions
-
-#### Setup Self-Hosted Runner
-
-**Follow GitHub's official guide:**
-📚 [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
-
-This will guide you through:
-1. Creating a runner token
-2. Configuring the runner on your machine
-3. Starting the runner
-
-**Quick Docker Setup (Alternative):**
-
-If you prefer a Docker-based runner, we provide a complete Docker setup:
+#### Step 1: Download techLEAD
 
 ```bash
-cd your-project/.github/runner
-
-# Configure environment
-cp .env.example .env
-vim .env
+# Clone the repository
+git clone https://github.com/RobAntunes/techLEAD.git
+cd techLEAD
 ```
 
-Update `.env`:
-```bash
-GITHUB_TOKEN=ghp_your_token_here
-GITHUB_REPOSITORY=yourusername/yourrepo
-CONTAINER_NAME=techlead-runner
-RUNNER_LABELS=self-hosted,linux,x64,techlead
-```
-
-**Setup Claude credentials:**
-```bash
-mkdir -p claude-credentials
-cp ~/.claude/.credentials.json claude-credentials/
-```
-
-**Start runner:**
-```bash
-docker-compose up -d --build
-
-# Verify
-docker logs techlead-runner
-```
-
-See `.github/runner/README.md` for detailed Docker setup instructions.
-
-#### Install techLEAD
-
-techLEAD supports two installation methods:
-
-##### Method 1: Plugin Installation (Recommended)
-
-**Install via Claude Code plugin system:**
+#### Step 2: Add Plugin to Claude Code
 
 ```bash
-# In Claude Code terminal:
-/plugin install techlead@marketplace
+# In Claude Code, add techLEAD as a marketplace
+/plugin marketplace add /full/path/to/techLEAD
+
+# Install the plugin
+/plugin install techlead@techlead-marketplace
 ```
 
-After plugin installation:
+*Replace `/full/path/to/techLEAD` with the actual path where you cloned the repository.*
 
-1. **Setup GitHub Actions** using Claude's official guide:
+#### Step 3: Complete techLEAD Setup
+
+```bash
+# Navigate to your project directory
+cd /path/to/your-project
+
+# Run the setup command in Claude Code
+/techlead-setup
+```
+
+This command:
+- Creates `.techlead/` directory structure
+- Installs monitoring scripts (monitor.sh, monitor-runner.sh)
+- Sets up hooks for state tracking
+- Copies guidance templates
+- Creates config and log files
+
+#### Step 4: Setup GitHub Actions (Choose Your Path)
+
+**Path A: Self-Hosted Runner with Monitoring** (Recommended for full autonomy)
+
+1. **Setup Claude GitHub Actions:**
    ```bash
-   # Quick setup command in Claude Code:
+   # In Claude Code:
    /install-github-app
 
-   # Or manually:
-   # https://docs.claude.com/en/docs/claude-code/github-actions
+   # Or manually: https://docs.claude.com/en/docs/claude-code/github-actions
    ```
 
 2. **Copy workflow template:**
@@ -464,175 +430,109 @@ After plugin installation:
    cp .github/workflows/claude.yml.template .github/workflows/claude.yml
    ```
 
-3. **Complete techLEAD setup:**
-   ```bash
-   # In Claude Code:
-   /techlead-setup
-   ```
+3. **Setup self-hosted runner:**
+   Follow GitHub's guide: [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 
-   This installs monitoring scripts and creates state directories.
+   Configure with label: `techlead`
 
-4. **Restart Claude Code** (close and reopen completely)
-   - Slash commands only load on full restart
+4. **Verify runner:** techLEAD will use `.techlead/monitor.sh` for real-time Docker log monitoring
 
-5. **Start orchestrating:**
-   ```bash
-   /techlead
-   ```
+**Path B: Orchestration-Only** (For existing runner setups)
 
-##### Method 2: Traditional Installation
+If you already have GitHub Actions with `@claude` configured:
+- Skip runner setup
+- techLEAD will use your existing runners
+- Monitoring will be manual (via GitHub UI)
+- All other features work normally
 
-**For users who prefer script-based installation:**
-
-```bash
-cd your-project-directory
-
-# Clone techLEAD
-git clone https://github.com/RobAntunes/techLEAD.git
-cd techLEAD
-
-# Run installer
-./install.sh
-
-# Follow prompts - installer will:
-# - Copy commands, agents, and hooks
-# - Install monitoring scripts
-# - Create state directories
-# - Configure permissions
-# - Copy workflow template
-```
-
-**After installation:**
-
-1. **Setup GitHub Actions** (same as plugin method):
-   ```bash
-   /install-github-app
-   ```
-
-2. **Restart Claude Code** completely
-
-3. **Start orchestrating:**
-   ```bash
-   /techlead
-   ```
-
-#### Usage
+#### Step 5: Start Orchestrating
 
 ```bash
 # Restart Claude Code (fully close and reopen)
-# This is required for the /techlead command to load
+# This is required for slash commands to load
 
 # Start techLEAD
 /techlead
 ```
 
-**Note:** With automated installation, the script configures the container name for you.
-
-**Monitoring workflows:**
-
-With self-hosted runners, you get real-time monitoring:
-
-```bash
-# techLEAD automatically runs this when monitoring @claude runner:
-.techlead/monitor.sh implement
-
-# You'll see real-time Docker logs:
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Monitoring GitHub Actions Runner
-# Container: techlead-runner
-# Job: claude
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#
-# ✓ Job started (2025-10-02 18:05:00Z)
-# Running... (this may take several minutes)
-# ✓ SUCCESS (2025-10-02 18:12:30Z)
-# Duration: 7m 30s
-```
+techLEAD will:
+- Run pre-flight checks
+- Verify `.techlead/` setup is complete
+- List open issues
+- Guide you through workflow
 
 ---
 
-### Option 2: Orchestration-Only (Existing Setup)
+### 📜 Method 2: Traditional Installation
 
-**Already have Claude Code GitHub Actions?** Just add the orchestration layer.
+**Script-based installation for full control.**
 
-This mode is perfect if you:
-- ✅ Already have `@claude` and `@claude-review` workflows configured
-- ✅ Already have self-hosted runners set up
-- ✅ Just want to add the techLEAD orchestration commands
+#### Prerequisites
+- Claude Code installed
+- Git installed
 
-#### What Gets Installed
+#### Step 1: Clone and Run Installer
 
-- `/techlead` slash command
-- State tracking hooks
-- Subagents (test-builder, code-analyzer, final-validator)
-- Memory system (CLAUDE.md + state files)
-
-#### What Gets Skipped
-
-- GitHub workflows (keeps your existing ones)
-- Runner configuration (uses your existing runners)
-
-#### Installation
-
-**Automated:**
 ```bash
-cd your-project-directory
-
-# Download installer
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
-chmod +x install.sh
-
-# Run installer (interactive)
-./install.sh
-# Choose option 2 (Orchestration only)
-
-# Optional: Remove downloaded installer from project root
-rm install.sh
-```
-
-**Note:** The installer is copied to `.techlead/install.sh` for reference.
-
-**Manual:**
-```bash
-# Clone techLEAD
-git clone https://github.com/Lucasmind/techLEAD.git
+# Clone the repository
+git clone https://github.com/RobAntunes/techLEAD.git
 cd techLEAD
 
-# Copy only orchestration components
-cp -r .techlead your-project/.techlead
-cp -r .claude your-project/.claude
-
-cd your-project
-
-# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
-if [ -f "CLAUDE.md" ]; then
-  echo -e "\n---\n" >> CLAUDE.md
-  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
-else
-  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
-fi
-
-# Make scripts executable
-chmod +x .techlead/*.sh .techlead/hooks/*.sh
-
-# Configure runner container name (if using self-hosted Docker runner)
-vim .techlead/config.json
-# Set: "container_name": "your-runner-name"
+# Run installer
+./install.sh
 ```
 
-#### Usage
+The installer will:
+- Prompt for target project directory
+- Copy commands, agents, and hooks to `.claude/`
+- Configure hooks in `.claude/config.json`
+- Set up permissions in `.claude/settings.local.json`
+- Run `scripts/finalsetup.sh` automatically to:
+  - Create `.techlead/` directory
+  - Install monitoring scripts
+  - Set up hooks and templates
+  - Create config and state files
+- Copy workflow template to `.github/workflows/`
+- Copy issue templates
+
+#### Step 2: Setup GitHub Actions (Choose Your Path)
+
+**Path A: Self-Hosted Runner with Monitoring** (Recommended)
+
+1. **Setup Claude GitHub Actions:**
+   ```bash
+   # In Claude Code:
+   /install-github-app
+
+   # Or manually: https://docs.claude.com/en/docs/claude-code/github-actions
+   ```
+
+2. **Activate workflow template:**
+   ```bash
+   cp .github/workflows/claude.yml.template .github/workflows/claude.yml
+   ```
+
+3. **Setup self-hosted runner:**
+   Follow GitHub's guide: [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
+
+   Configure with label: `techlead`
+
+**Path B: Orchestration-Only** (For existing setups)
+
+If you already have GitHub Actions with `@claude` configured:
+- Skip runner setup
+- techLEAD uses your existing runners
+- All orchestration features work normally
+
+#### Step 3: Start Orchestrating
 
 ```bash
 # Restart Claude Code (fully close and reopen)
-# This is required for the /techlead command to load
+# Slash commands only load on full restart
 
-# Start techLEAD orchestration
+# Start techLEAD
 /techlead
 ```
-
-**Important:** Make sure your existing workflows have the `@claude` and `@claude-review` triggers configured properly.
-
-**Note:** With automated installation, the script prompts for your runner container name if you're using Docker monitoring.
 
 ---
 

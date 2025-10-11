@@ -1,0 +1,15 @@
+{
+  "name": "techlead-marketplace",
+  "owner": {
+    "name": "Rob Dunham",
+    "url": "https://github.com/RobAntunes"
+  },
+  "description": "Official techLEAD plugin marketplace for autonomous project orchestration",
+  "plugins": [
+    {
+      "name": "techlead",
+      "source": ".",
+      "description": "Autonomous project orchestration with GitHub Actions runners for software development workflows"
+    }
+  ]
+}
