@@ -1,0 +1,55 @@
+{
+  "name": "techlead",
+  "description": "Autonomous project orchestration with GitHub Actions runners for software development workflows",
+  "version": "1.2.0",
+  "author": {
+    "name": "Rob Dunham",
+    "url": "https://github.com/RobAntunes/techLEAD"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RobAntunes/techLEAD"
+  },
+  "keywords": [
+    "orchestration",
+    "github-actions",
+    "automation",
+    "testing",
+    "code-review",
+    "workflow",
+    "ci-cd"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/save-workflow-state.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash.*gh (issue|pr)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/github-state-sync.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "test-builder|code-analyzer|final-validator",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/log-subagent-completion.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -437,53 +437,84 @@ See `.github/runner/README.md` for detailed Docker setup instructions.
 
 #### Install techLEAD
 
-**Automated (Recommended):**
+techLEAD supports two installation methods:
+
+##### Method 1: Plugin Installation (Recommended)
+
+**Install via Claude Code plugin system:**
+
+```bash
+# In Claude Code terminal:
+/plugin install techlead@marketplace
+```
+
+After plugin installation:
+
+1. **Setup GitHub Actions** using Claude's official guide:
+   ```bash
+   # Quick setup command in Claude Code:
+   /install-github-app
+
+   # Or manually:
+   # https://docs.claude.com/en/docs/claude-code/github-actions
+   ```
+
+2. **Copy workflow template:**
+   ```bash
+   cp .github/workflows/claude.yml.template .github/workflows/claude.yml
+   ```
+
+3. **Complete techLEAD setup:**
+   ```bash
+   # In Claude Code:
+   /techlead-setup
+   ```
+
+   This installs monitoring scripts and creates state directories.
+
+4. **Restart Claude Code** (close and reopen completely)
+   - Slash commands only load on full restart
+
+5. **Start orchestrating:**
+   ```bash
+   /techlead
+   ```
+
+##### Method 2: Traditional Installation
+
+**For users who prefer script-based installation:**
+
 ```bash
 cd your-project-directory
 
-# Download installer
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o install.sh
-chmod +x install.sh
-
-# Run installer (interactive)
-./install.sh
-# Choose option 2 (Self-hosted)
-# Follow the prompts
-
-# Optional: Remove downloaded installer from project root
-rm install.sh
-```
-
-**Note:** The installer is copied to `.techlead/install.sh` for reference.
-
-**Manual:**
-```bash
 # Clone techLEAD
-git clone https://github.com/Lucasmind/techLEAD.git
+git clone https://github.com/RobAntunes/techLEAD.git
 cd techLEAD
 
-# Copy to your project
-cp -r .techlead your-project/.techlead
-cp -r .github your-project/.github
-cp -r .claude your-project/.claude
+# Run installer
+./install.sh
 
-cd your-project
-
-# Append techLEAD guidelines to CLAUDE.md (if exists) or create new
-if [ -f "CLAUDE.md" ]; then
-  echo -e "\n---\n" >> CLAUDE.md
-  cat /path/to/techLEAD/CLAUDE.md >> CLAUDE.md
-else
-  cp /path/to/techLEAD/CLAUDE.md CLAUDE.md
-fi
-
-# Make scripts executable
-chmod +x .techlead/*.sh .techlead/hooks/*.sh
-
-# Configure runner container name (if using Docker monitoring)
-vim .techlead/config.json
-# Set: "container_name": "your-runner-name"
+# Follow prompts - installer will:
+# - Copy commands, agents, and hooks
+# - Install monitoring scripts
+# - Create state directories
+# - Configure permissions
+# - Copy workflow template
 ```
+
+**After installation:**
+
+1. **Setup GitHub Actions** (same as plugin method):
+   ```bash
+   /install-github-app
+   ```
+
+2. **Restart Claude Code** completely
+
+3. **Start orchestrating:**
+   ```bash
+   /techlead
+   ```
 
 #### Usage
 
