@@ -27,7 +27,7 @@ This command runs the `finalsetup.sh` script to:
 
    If the script is not found in the current directory, help the user locate it:
    ```bash
-   find ~ -name "finalsetup.sh" -path "*/techlead/*" 2>/dev/null
+   find ~/.claude/plugins -name "finalsetup.sh" 2>/dev/null
    ```
 
 3. **Verify setup completed:**
