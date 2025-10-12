@@ -21,3 +21,4 @@ PROJECT_INDEX.json
 
 # Installation backups
 .backup.*
+MIGRATION-GUIDE.md
