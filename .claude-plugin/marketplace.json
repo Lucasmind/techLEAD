@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "techlead",
-      "source": ".",
+      "source": "./",
       "description": "Autonomous project orchestration with GitHub Actions runners for software development workflows"
     }
   ]
