@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/save-workflow-state.sh"
+            "command": ".techlead/hooks/save-workflow-state.sh"
           }
         ]
       },
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/github-state-sync.sh"
+            "command": ".techlead/hooks/github-state-sync.sh"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/log-subagent-completion.sh"
+            "command": ".techlead/hooks/log-subagent-completion.sh"
           }
         ]
       }

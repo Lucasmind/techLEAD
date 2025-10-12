@@ -40,8 +40,6 @@ echo "Directories:"
 echo ""
 echo "Files:"
 [ -f ".claude/config.json" ] && echo "  • .claude/config.json (will restore backup if exists)"
-[ -f ".github/workflows/claude.yml" ] && echo "  • .github/workflows/claude.yml"
-[ -f ".github/workflows/claude-code-review.yml" ] && echo "  • .github/workflows/claude-code-review.yml"
 [ -f "CLAUDE.md" ] && echo "  • CLAUDE.md (will restore backup if exists)"
 
 echo ""
@@ -107,11 +105,6 @@ echo "Removing techLEAD directories..."
 [ -d ".techlead" ] && rm -rf .techlead && echo "✓ Removed .techlead/"
 [ -d ".claude/agents" ] && rm -rf .claude/agents && echo "✓ Removed .claude/agents/"
 [ -d ".github/runner" ] && rm -rf .github/runner && echo "✓ Removed .github/runner/"
-
-# Remove workflows
-echo "Removing workflows..."
-[ -f ".github/workflows/claude.yml" ] && rm .github/workflows/claude.yml && echo "✓ Removed claude.yml"
-[ -f ".github/workflows/claude-code-review.yml" ] && rm .github/workflows/claude-code-review.yml && echo "✓ Removed claude-code-review.yml"
 
 # Ask about .gitignore cleanup
 echo ""
