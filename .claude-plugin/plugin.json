@@ -6,10 +6,7 @@
     "name": "Rob Dunham",
     "url": "https://github.com/RobAntunes/techLEAD"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/RobAntunes/techLEAD"
-  },
+  "repository": "https://github.com/RobAntunes/techLEAD",
   "keywords": [
     "orchestration",
     "github-actions",
