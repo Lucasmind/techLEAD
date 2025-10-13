@@ -1179,6 +1179,41 @@ Instead, consider:
 
 ---
 
+## Upgrading
+
+To upgrade techLEAD to the latest version:
+
+### Step 1: Update the Plugin
+
+```bash
+# In Claude Code
+/plugin update techlead
+```
+
+This updates the plugin files (commands, agents, hook configuration).
+
+### Step 2: Update Project Scripts
+
+```bash
+# In your project
+/techlead:techlead-setup
+```
+
+This updates your project's `.techlead/` directory with:
+- ✅ Latest monitor scripts (monitor.sh, monitor-runner.sh)
+- ✅ Updated guidance templates
+- ✅ New hook scripts
+- ✅ Preserves your config.json settings
+- ✅ Preserves your history files (decisions_log, work_log)
+
+### Step 3: Restart Claude Code
+
+Close and reopen Claude Code to load the updated commands.
+
+**That's it!** Your techLEAD installation is now up to date.
+
+---
+
 ## Uninstall
 
 To remove techLEAD from your project:
