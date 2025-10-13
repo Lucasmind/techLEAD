@@ -117,7 +117,7 @@ Ready to try techLEAD? Get started in 5 minutes:
 1. **Open your project** in Claude Code:
    ```bash
    cd /path/to/your-project
-   claude-code .
+   claude
    ```
 
 2. **Install the plugin:**
@@ -141,8 +141,6 @@ Ready to try techLEAD? Get started in 5 minutes:
 **That's it!** Run `/techlead:techlead` to start orchestrating.
 
 **💡 Tip**: For full autonomy without permission prompts, launch Claude Code with `--dangerously-skip-permissions` flag (only in repos you trust).
-
-**🔄 Upgrading**: Already have techLEAD? Just run `/plugin update techlead` in Claude Code.
 
 ---
 
