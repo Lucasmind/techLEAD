@@ -8,8 +8,9 @@
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
 [![GitHub Stars](https://img.shields.io/github/stars/Lucasmind/techLEAD?style=social)](https://github.com/Lucasmind/techLEAD/stargazers)
 
-<!-- TODO: Add demo GIF here -->
-<!-- ![techLEAD in Action](docs/demo.gif) -->
+[![techLEAD in Action](docs/demo.gif)](docs/demo.mp4)
+
+*Click the demo above to watch the full video*
 
 > **See techLEAD in action**: Watch as it autonomously analyzes issues, coordinates GitHub Actions runners, builds comprehensive tests, manages code reviews, and delivers high-quality code - all while you focus on strategic decisions.
 
