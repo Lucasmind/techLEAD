@@ -5,7 +5,13 @@
 **Autonomous project orchestration powered by Claude Code**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/RobAntunes/techLEAD)
+[![GitHub Stars](https://img.shields.io/github/stars/RobAntunes/techLEAD?style=social)](https://github.com/RobAntunes/techLEAD/stargazers)
+
+<!-- TODO: Add demo GIF here -->
+<!-- ![techLEAD in Action](docs/demo.gif) -->
+
+> **See techLEAD in action**: Watch as it autonomously analyzes issues, coordinates GitHub Actions runners, builds comprehensive tests, manages code reviews, and delivers high-quality code - all while you focus on strategic decisions.
 
 ---
 
@@ -25,7 +31,7 @@ Good vibes to you! ✌️
 
 **Why?** techLEAD triggers on GitHub issue comments and titles (like `@claude`). In an open repo, anyone can create issues or comments, which could be a security concern. In a personal or private team repo, you control who has access, so you're only triggering automation on content you trust.
 
-**For Full Autonomy**: To get the most out of techLEAD's autonomous workflows without constant permission prompts, consider running Claude Code with the `--dangerously-skip-permissions` flag when using the `/techlead` command:
+**For Full Autonomy**: To get the most out of techLEAD's autonomous workflows without constant permission prompts, consider running Claude Code with the `--dangerously-skip-permissions` flag when using the `/techlead:techlead` command:
 
 ```bash
 # Add to your Claude Code launch or settings
@@ -59,6 +65,88 @@ techLEAD is an AI-powered technical leader that autonomously manages software de
 
 ---
 
+## Use Cases
+
+techLEAD excels in scenarios where autonomous coordination and quality assurance are critical:
+
+### 🚀 Solo Developer Velocity
+**Perfect for:** Individual developers managing their own projects
+- Analyze and prioritize your backlog of issues
+- Delegate implementation to @claude runner while you focus on architecture
+- Automatic test generation with 80%+ coverage
+- Code review and quality checks before every merge
+- **Result:** Ship features 3-5x faster with better quality
+
+### 👥 Small Team Coordination
+**Perfect for:** 2-5 person teams working on private repositories
+- Consistent development workflow across team members
+- Automated code review catches issues before human review
+- Comprehensive testing reduces QA burden
+- Built-in rollback checkpoints for safe experimentation
+- **Result:** Maintain high quality standards without slowing down
+
+### 🔐 Security-Critical Features
+**Perfect for:** Features involving authentication, payments, or sensitive data
+- Uses security-specific guidance templates
+- Multiple validation layers (tests + review + final validation)
+- Catches vulnerabilities early in the review phase
+- Comprehensive E2E testing with Playwright
+- **Result:** Ship secure code with confidence
+
+### 🔄 Large Refactoring Projects
+**Perfect for:** Technical debt cleanup or architecture changes
+- Multi-issue sequences for related refactoring work
+- Checkpoint system allows easy rollback if approach fails
+- Automated testing prevents regressions
+- Review ensures refactoring doesn't change behavior
+- **Result:** Safely modernize codebase without breaking features
+
+### ⚡ Rapid Prototyping
+**Perfect for:** Validating ideas quickly
+- Quick issue creation with `/techlead:techlead-issue`
+- Autonomous implementation and testing
+- Fast iteration with rollback protection
+- Memory system learns your patterns
+- **Result:** Validate 5-10 ideas per day instead of 1-2
+
+---
+
+## Quick Start
+
+Ready to try techLEAD? Get started in 5 minutes:
+
+### Prerequisites
+- [Claude Code](https://claude.com/claude-code) installed
+- Git installed
+- GitHub repository (public or private)
+
+### Installation (3 steps)
+
+1. **Install the plugin** in Claude Code:
+   ```bash
+   /plugin marketplace add https://github.com/RobAntunes/techLEAD
+   /plugin install techlead@techlead-marketplace
+   ```
+
+2. **Complete setup** in your project:
+   ```bash
+   cd /path/to/your-project
+   /techlead:techlead-setup
+   ```
+
+3. **Set up GitHub Actions** (one-time):
+   - Follow [Claude's GitHub Actions guide](https://docs.claude.com/en/docs/claude-code/github-actions)
+   - Or use `/install-github-app` in Claude Code
+   - For self-hosted runners: Add runner with label `techlead`
+
+**That's it!** Restart Claude Code and run `/techlead:techlead` to start orchestrating.
+
+**💡 Tip**: For full autonomy without permission prompts, launch Claude Code with `--dangerously-skip-permissions` flag (only in repos you trust).
+
+**🔄 Upgrading**: Already have techLEAD? Just run `/plugin update techlead` in Claude Code.
+
+---
+
 ## How It Works: A Typical Workflow
 
 Here's what a day with techLEAD looks like, whether you're starting a new project or working on an existing codebase.
@@ -67,7 +155,7 @@ Here's what a day with techLEAD looks like, whether you're starting a new projec
 
 **Create issues with AI assistance:**
 ```bash
-You: /techlead-issue
+You: /techlead:techlead-issue
 
 Claude: What would you like to create an issue for?
 
@@ -93,7 +181,7 @@ Let me help you create a comprehensive feature issue...
 
 **Initialize techLEAD:**
 ```bash
-You: /techlead
+You: /techlead:techlead
 
 techLEAD: Checking for in-progress work... None found.
 
@@ -271,23 +359,47 @@ Continue with next issue? (yes/no)
 - `code-analyzer`: Interprets review feedback, prioritizes actions
 - `final-validator`: Pre-merge quality gate (tests, linting, builds, E2E)
 
-**Monitoring**
+**Monitoring (Self-Hosted Runners)**
 
-techLEAD uses real-time Docker log monitoring with self-hosted runners:
+With self-hosted runners, techLEAD monitors jobs in real-time via Docker logs:
+
 ```bash
-# Automatically called by techLEAD
-.techlead/monitor.sh implement  # Watches @claude
+# Automatically called by techLEAD during workflow
+.techlead/monitor.sh implement  # Watches @claude implementation
 .techlead/monitor.sh review     # Watches @claude-review
+.techlead/monitor.sh test       # Watches @claude-test
 ```
 
-This is essential for techLEAD's autonomous operation and is why self-hosted runners are required.
+**How monitoring works:**
+```
+techLEAD posts @claude comment
+  ↓
+Runs: .techlead/monitor.sh implement (BLOCKS until complete)
+  ↓
+Script tails: docker logs -f <container>
+  ↓
+Detects: "Running job: claude" → "Job completed: Succeeded"
+  ↓
+Exits with code 0 (success) or 1 (failure)
+  ↓
+techLEAD continues workflow automatically
+```
+
+**Benefits:**
+- ✅ Real-time visibility into job progress
+- ✅ No polling overhead or API rate limits
+- ✅ Guaranteed workflow continuation
+- ✅ Works offline with local runners
+- ✅ Essential for fully autonomous operation
+
+This is why self-hosted runners are recommended for the full techLEAD experience.
 
 ### Working in Sprints
 
 **Multi-issue sequences:**
 
 ```bash
-You: /techlead
+You: /techlead:techlead
 
 techLEAD: Found 5 related issues tagged 'auth-sprint':
   #42 JWT authentication
@@ -328,7 +440,7 @@ All changes merged to main. Authentication sprint complete! 🎉
 If something goes wrong, rollback to any checkpoint:
 
 ```bash
-You: /rollback
+You: /techlead:rollback
 
 Claude: Available rollback points:
   - after-issue-42: Keep JWT auth, remove later work
@@ -353,190 +465,7 @@ Ready to start fresh!
 
 ---
 
-## Quick Start
-
-**Choose your installation method:**
-
-| Method | Best For | Setup Time |
-|--------|----------|------------|
-| **🔌 Plugin** | Modern, easy updates, recommended | 5 minutes |
-| **📜 Script** | Full control, traditional approach | 5 minutes |
-
-Both methods support **self-hosted runners** (with real-time Docker monitoring) or **orchestration-only** mode (for existing runner setups).
-
-⚠️ **Important:** For autonomous operation with real-time monitoring, techLEAD requires self-hosted runners with Docker access. The `.techlead/monitor.sh` scripts provide real-time job status essential for techLEAD's workflow.
-
----
-
-### 🔌 Method 1: Plugin Installation (Recommended)
-
-**Modern, easy installation via Claude Code plugin system.**
-
-#### Prerequisites
-- Claude Code installed
-- Git installed
-
-#### Step 1: Download techLEAD
-
-```bash
-# Clone the repository
-git clone https://github.com/RobAntunes/techLEAD.git
-cd techLEAD
-```
-
-#### Step 2: Add Plugin to Claude Code
-
-```bash
-# In Claude Code, add techLEAD as a marketplace
-/plugin marketplace add /full/path/to/techLEAD
-
-# Install the plugin
-/plugin install techlead@techlead-marketplace
-```
-
-*Replace `/full/path/to/techLEAD` with the actual path where you cloned the repository.*
-
-#### Step 3: Complete techLEAD Setup
-
-```bash
-# Navigate to your project directory
-cd /path/to/your-project
-
-# Run the setup command in Claude Code
-/techlead-setup
-```
-
-This command:
-- Creates `.techlead/` directory structure
-- Installs monitoring scripts (monitor.sh, monitor-runner.sh)
-- Sets up hooks for state tracking
-- Copies guidance templates
-- Creates config and log files
-
-#### Step 4: Setup GitHub Actions (Choose Your Path)
-
-**Path A: Self-Hosted Runner with Monitoring** (Recommended for full autonomy)
-
-1. **Setup Claude GitHub Actions:**
-   ```bash
-   # In Claude Code:
-   /install-github-app
-
-   # Or manually: https://docs.claude.com/en/docs/claude-code/github-actions
-   ```
-
-2. **Copy workflow template:**
-   ```bash
-   cp .github/workflows/claude.yml.template .github/workflows/claude.yml
-   ```
-
-3. **Setup self-hosted runner:**
-   Follow GitHub's guide: [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
-
-   Configure with label: `techlead`
-
-4. **Verify runner:** techLEAD will use `.techlead/monitor.sh` for real-time Docker log monitoring
-
-**Path B: Orchestration-Only** (For existing runner setups)
-
-If you already have GitHub Actions with `@claude` configured:
-- Skip runner setup
-- techLEAD will use your existing runners
-- Monitoring will be manual (via GitHub UI)
-- All other features work normally
-
-#### Step 5: Start Orchestrating
-
-```bash
-# Restart Claude Code (fully close and reopen)
-# This is required for slash commands to load
-
-# Start techLEAD
-/techlead
-```
-
-techLEAD will:
-- Run pre-flight checks
-- Verify `.techlead/` setup is complete
-- List open issues
-- Guide you through workflow
-
----
-
-### 📜 Method 2: Traditional Installation
-
-**Script-based installation for full control.**
-
-#### Prerequisites
-- Claude Code installed
-- Git installed
-
-#### Step 1: Clone and Run Installer
-
-```bash
-# Clone the repository
-git clone https://github.com/RobAntunes/techLEAD.git
-cd techLEAD
-
-# Run installer
-./install.sh
-```
-
-The installer will:
-- Prompt for target project directory
-- Copy commands, agents, and hooks to `.claude/`
-- Configure hooks in `.claude/config.json`
-- Set up permissions in `.claude/settings.local.json`
-- Run `scripts/finalsetup.sh` automatically to:
-  - Create `.techlead/` directory
-  - Install monitoring scripts
-  - Set up hooks and templates
-  - Create config and state files
-- Copy workflow template to `.github/workflows/`
-- Copy issue templates
-
-#### Step 2: Setup GitHub Actions (Choose Your Path)
-
-**Path A: Self-Hosted Runner with Monitoring** (Recommended)
-
-1. **Setup Claude GitHub Actions:**
-   ```bash
-   # In Claude Code:
-   /install-github-app
-
-   # Or manually: https://docs.claude.com/en/docs/claude-code/github-actions
-   ```
-
-2. **Activate workflow template:**
-   ```bash
-   cp .github/workflows/claude.yml.template .github/workflows/claude.yml
-   ```
-
-3. **Setup self-hosted runner:**
-   Follow GitHub's guide: [Add Self-Hosted Runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
-
-   Configure with label: `techlead`
-
-**Path B: Orchestration-Only** (For existing setups)
-
-If you already have GitHub Actions with `@claude` configured:
-- Skip runner setup
-- techLEAD uses your existing runners
-- All orchestration features work normally
-
-#### Step 3: Start Orchestrating
-
-```bash
-# Restart Claude Code (fully close and reopen)
-# Slash commands only load on full restart
-
-# Start techLEAD
-/techlead
-```
-
----
-
-### What Happens When You Run `/techlead`
+### What Happens When You Run `/techlead:techlead`
 
 1. **Issue Selection**
    - Lists all open issues
@@ -573,7 +502,7 @@ If you already have GitHub Actions with `@claude` configured:
 ## Architecture
 
 ```
-/techlead command
+/techlead:techlead command
   ↓
 Main techLEAD Session (Claude Code)
 ├── Decision Engine (native Claude reasoning)
@@ -687,10 +616,10 @@ techLEAD's **test-builder subagent** automatically:
 
 ### AI-Assisted Issue Creation
 
-Use the `/techlead-issue` command for AI-guided issue creation with automatic classification and formatting:
+Use the `/techlead:techlead-issue` command for AI-guided issue creation with automatic classification and formatting:
 
 ```bash
-/techlead-issue
+/techlead:techlead-issue
 ```
 
 **Features:**
@@ -703,7 +632,7 @@ Use the `/techlead-issue` command for AI-guided issue creation with automatic cl
 
 **Example Session:**
 ```
-You: /techlead-issue
+You: /techlead:techlead-issue
 
 Claude: What would you like to create an issue for?
 
@@ -733,7 +662,7 @@ Labels: enhancement, api
 URL: https://github.com/user/repo/issues/54
 
 Next steps:
-  a) Start work now (/techlead)
+  a) Start work now (/techlead:techlead)
   b) Create more issues
   c) Done
 ```
@@ -831,52 +760,6 @@ These templates ensure @claude receives clear, actionable guidance for every iss
 
 ---
 
-## Monitoring
-
-techLEAD uses **Docker log monitoring** for real-time runner feedback:
-
-### Monitor Scripts
-
-```bash
-# Monitor implementation runner
-.techlead/monitor.sh implement
-
-# Monitor code review
-.techlead/monitor.sh review
-
-# Monitor tests
-.techlead/monitor.sh test
-```
-
-### How It Works
-
-```
-techLEAD posts @claude comment
-  ↓
-techLEAD runs: .techlead/monitor.sh implement
-  ↓
-Claude Code BLOCKS (waits for script to exit)
-  ↓
-Script tails Docker logs: docker logs -f <container>
-  ↓
-Detects: "Running job: claude"
-Detects: "Job claude completed with result: Succeeded"
-  ↓
-Script exits with code 0 (success) or 1 (failure)
-  ↓
-Control returns to techLEAD
-  ↓
-techLEAD continues workflow automatically
-```
-
-**Benefits:**
-- ✅ Real-time visibility
-- ✅ No polling overhead
-- ✅ Guaranteed continuation
-- ✅ Works offline (local runner)
-
----
-
 ## Memory & State
 
 ### File Structure
@@ -898,14 +781,14 @@ techLEAD continues workflow automatically
 If workflow is interrupted:
 
 1. **State saved** to workflow_state.json after each step
-2. **On restart**, /techlead checks for existing state
+2. **On restart**, /techlead:techlead checks for existing state
 3. **If recent** (<24h): Offers to resume from last step
 4. **If stale** (>24h): Archives and starts fresh
 
 **Example:**
 
 ```
-You: /techlead
+You: /techlead:techlead
 
 techLEAD: Found in-progress workflow:
 - Issue #42 (OAuth implementation)
@@ -933,7 +816,11 @@ What would you like to do?
 
 ## Configuration
 
+**All configuration files are automatically created by `/techlead:techlead-setup`** (which runs `scripts/finalsetup.sh`). You typically don't need to edit these manually, but here's what they contain:
+
 ### .techlead/config.json
+
+Created by `finalsetup.sh` with default settings.
 
 ```json
 {
@@ -970,7 +857,7 @@ Contains:
 ### .claude/commands/techlead.md
 
 Contains:
-- `/techlead` slash command definition
+- `/techlead:techlead` slash command definition
 - Loaded by Claude Code on startup
 - **Requires full restart** (close and reopen) to load changes
 
@@ -1053,36 +940,6 @@ Contains:
   "overall_success": true
 }
 ```
-
----
-
-## Deployment to Your Project
-
-### Option 1: Copy Scripts
-
-```bash
-# In your project directory
-mkdir -p .techlead/hooks
-cp /path/to/techLEAD/.techlead/*.sh .techlead/
-cp /path/to/techLEAD/.techlead/hooks/*.sh .techlead/hooks/
-cp /path/to/techLEAD/.techlead/config.json .techlead/
-
-# Edit config with your runner name
-vim .techlead/config.json
-
-# Make executable
-chmod +x .techlead/*.sh .techlead/hooks/*.sh
-
-# Update CLAUDE.md with project context
-vim CLAUDE.md
-```
-
-### Option 2: Use as Template
-
-1. Fork this repository
-2. Customize CLAUDE.md with your project specifics
-3. Update `.techlead/config.json` with your runner
-4. Add project-specific patterns to CLAUDE.md
 
 ---
 
@@ -1198,13 +1055,13 @@ git push --force origin main
 gh issue reopen 42
 ```
 
-### Using the /rollback Command
+### Using the /techlead:rollback Command
 
 techLEAD provides an interactive rollback command:
 
 ```bash
 # In Claude Code
-/rollback
+/techlead:rollback
 ```
 
 **Workflow:**
@@ -1294,101 +1151,38 @@ Instead, consider:
 
 ---
 
-## Upgrading
-
-If you already have techLEAD installed and want to upgrade to the latest version:
-
-```bash
-# Run the install script again
-.techlead/install.sh
-
-# Or download the latest version
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/install.sh -o /tmp/techlead-upgrade.sh
-chmod +x /tmp/techlead-upgrade.sh
-/tmp/techlead-upgrade.sh
-```
-
-**The installer will automatically detect your existing installation and offer:**
-
-1. **Upgrade (recommended)** - Updates all components while preserving your configuration
-2. **Reinstall** - Fresh installation with backups
-3. **Cancel** - Exit without changes
-
-### What Gets Updated
-
-- ✅ Monitor scripts (smart job detection)
-- ✅ /techlead command (autonomous execution)
-- ✅ Hooks (state tracking)
-- ✅ Subagents (test-builder, code-analyzer, final-validator)
-- ✅ Permissions (auto-configured)
-
-### What Gets Preserved
-
-- ✅ Your container name and runtime config
-- ✅ Memory files (decisions_log.jsonl, work_log.jsonl)
-- ✅ CLAUDE.md customizations
-- ✅ Workflow files (if Mode 3)
-
-### After Upgrading
-
-1. **Restart Claude Code** (fully close and reopen)
-2. Run `/techlead` to use the updated orchestrator
-
-The upgrade creates a timestamped backup in `.techlead/backup-upgrade-[timestamp]/` so you can roll back if needed.
-
----
-
 ## Uninstall
 
 To remove techLEAD from your project:
 
+### Using Plugin Interface (Recommended)
+
 ```bash
-# Run the uninstall script (automatically installed during setup)
-.techlead/uninstall.sh
+# In Claude Code
+/plugin uninstall techlead
 ```
 
-**If the uninstall script is missing:**
+This removes the plugin from Claude Code. Then clean up project files:
+
 ```bash
-# Download it to the correct location
-curl -sSL https://raw.githubusercontent.com/Lucasmind/techLEAD/main/uninstall.sh -o .techlead/uninstall.sh
-chmod +x .techlead/uninstall.sh
-.techlead/uninstall.sh
+# In your project directory
+rm -rf .techlead
 ```
 
-**What the uninstall script does:**
+### Manual Cleanup (if needed)
 
-1. **Shows what will be removed:**
-   - Directories: `.techlead/`, `.claude/agents/`, `.github/runner/`
-   - Workflows: `claude.yml`, `claude-code-review.yml`
-   - Files: Based on installation log
+If you need to remove additional files:
 
-2. **Restores backups:**
-   - `.backup.CLAUDE.md` → `CLAUDE.md`
-   - `.claude/config.json.backup` → `.claude/config.json`
+```bash
+# Remove .techlead directory
+rm -rf .techlead
 
-3. **Cleans up:**
-   - Removes all techLEAD files and directories
-   - Optionally removes techLEAD entries from `.gitignore`
+# Optional: Remove workflow templates (if you're not using them)
+# ONLY do this if you're sure you don't need them
+# rm .github/workflows/claude.yml.template
+```
 
-4. **Lists remaining backups** you can manually delete
-
-**Safe uninstall:**
-- Always creates `.gitignore.backup` before modifying
-- Asks for confirmation before removing files
-- Preserves your original project files
-
----
-
-## Contributing
-
-We welcome contributions! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Test thoroughly
-4. Submit a pull request with detailed description
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+**Note:** The plugin uninstall preserves your project's `.techlead/` directory and configuration. You need to manually remove it if desired.
 
 ---
 
@@ -1416,6 +1210,6 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 **Built with ❤️ using Claude Code**
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Production Ready
-**Last Updated:** 2025-10-05
+**Last Updated:** 2025-10-13
