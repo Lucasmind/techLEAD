@@ -5,8 +5,8 @@
 **Autonomous project orchestration powered by Claude Code**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/RobAntunes/techLEAD)
-[![GitHub Stars](https://img.shields.io/github/stars/RobAntunes/techLEAD?style=social)](https://github.com/RobAntunes/techLEAD/stargazers)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Lucasmind/techLEAD)
+[![GitHub Stars](https://img.shields.io/github/stars/Lucasmind/techLEAD?style=social)](https://github.com/Lucasmind/techLEAD/stargazers)
 
 <!-- TODO: Add demo GIF here -->
 <!-- ![techLEAD in Action](docs/demo.gif) -->
@@ -85,14 +85,6 @@ techLEAD excels in scenarios where autonomous coordination and quality assurance
 - Built-in rollback checkpoints for safe experimentation
 - **Result:** Maintain high quality standards without slowing down
 
-### 🔐 Security-Critical Features
-**Perfect for:** Features involving authentication, payments, or sensitive data
-- Uses security-specific guidance templates
-- Multiple validation layers (tests + review + final validation)
-- Catches vulnerabilities early in the review phase
-- Comprehensive E2E testing with Playwright
-- **Result:** Ship secure code with confidence
-
 ### 🔄 Large Refactoring Projects
 **Perfect for:** Technical debt cleanup or architecture changes
 - Multi-issue sequences for related refactoring work
@@ -122,24 +114,31 @@ Ready to try techLEAD? Get started in 5 minutes:
 
 ### Installation (3 steps)
 
-1. **Install the plugin** in Claude Code:
-   ```bash
-   /plugin marketplace add https://github.com/RobAntunes/techLEAD
-   /plugin install techlead@techlead-marketplace
-   ```
-
-2. **Complete setup** in your project:
+1. **Open your project** in Claude Code:
    ```bash
    cd /path/to/your-project
+   claude-code .
+   ```
+
+2. **Install the plugin:**
+   - Type `/plugin` and select **"Add marketplace"**
+   - Enter: `https://github.com/Lucasmind/techLEAD`
+   - Select **techlead-marketplace** from the list
+   - Install the **techlead** plugin
+
+3. **Complete setup:**
+   ```bash
    /techlead:techlead-setup
    ```
 
-3. **Set up GitHub Actions** (one-time):
+   This creates the `.techlead/` directory with monitoring scripts, templates, and configuration.
+
+4. **Set up GitHub Actions** (one-time):
    - Follow [Claude's GitHub Actions guide](https://docs.claude.com/en/docs/claude-code/github-actions)
    - Or use `/install-github-app` in Claude Code
    - For self-hosted runners: Add runner with label `techlead`
 
-**That's it!** Restart Claude Code and run `/techlead:techlead` to start orchestrating.
+**That's it!** Run `/techlead:techlead` to start orchestrating.
 
 **💡 Tip**: For full autonomy without permission prompts, launch Claude Code with `--dangerously-skip-permissions` flag (only in repos you trust).
 
@@ -501,31 +500,62 @@ Ready to start fresh!
 
 ## Architecture
 
+techLEAD is a **multi-component system** where a main orchestrator coordinates GitHub Actions runners and local subagents to autonomously manage your development workflow.
+
+### System Overview
+
 ```
-/techlead:techlead command
-  ↓
-Main techLEAD Session (Claude Code)
-├── Decision Engine (native Claude reasoning)
-├── Runner Monitoring (Docker logs, blocking)
-├── Subagent Spawning (Task tool)
-│   ├── test-builder (creates & validates tests)
-│   ├── code-analyzer (interprets review feedback)
-│   └── final-validator (pre-merge checks)
-└── Memory Management (CLAUDE.md + state files)
+                    ┌─────────────────────────────────────┐
+                    │   You (Project Manager)            │
+                    │   Issues slash commands             │
+                    └──────────────┬──────────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────────┐
+                    │   techLEAD Orchestrator             │
+                    │   (Claude Code Session)             │
+                    │                                     │
+                    │  • Analyzes issues & prioritizes   │
+                    │  • Coordinates all actors          │
+                    │  • Makes strategic decisions       │
+                    │  • Manages workflow state          │
+                    └──┬────────┬────────┬────────────────┘
+                       │        │        │
+       ┌───────────────┘        │        └─────────────────┐
+       │                        │                          │
+       ▼                        ▼                          ▼
+┌──────────────┐      ┌──────────────────┐     ┌─────────────────┐
+│ GitHub       │      │ Local Subagents  │     │ Monitor Scripts │
+│ Actions      │      │ (Task tool)      │     │ (.techlead/)    │
+│              │      │                  │     │                 │
+│ @claude      │      │ • test-builder   │     │ • monitor.sh    │
+│ @claude-     │      │ • code-analyzer  │     │ • monitor-      │
+│  review      │      │ • final-validator│     │   runner.sh     │
+└──────────────┘      └──────────────────┘     └─────────────────┘
 ```
+
+### Slash Commands (Your Interface)
+
+These commands are how you interact with techLEAD:
+
+| Command | What It Does | When To Use |
+|---------|--------------|-------------|
+| **`/techlead:techlead`** | Starts the main orchestrator - analyzes issues, coordinates implementation, testing, review, and merge | Beginning of work session or when ready to tackle issues |
+| **`/techlead:techlead-issue`** | AI-assisted issue creation with automatic classification and template selection | Creating new GitHub issues with structured, comprehensive information |
+| **`/techlead:techlead-setup`** | Installs monitoring scripts, templates, hooks, and config files to your project | First-time setup after plugin installation |
+| **`/techlead:rollback`** | Interactive rollback to previous checkpoints using git tags | When you need to undo work from one or more issues |
 
 ### Key Components
 
-| Component | Purpose | Implementation |
-|-----------|---------|----------------|
-| **techLEAD** | Strategic orchestration | Claude Code session |
-| **@claude** | Code implementation | GitHub Actions runner |
-| **@claude-review** | Code review | GitHub Actions runner (auto-triggered) |
-| **test-builder** | Test creation | Subagent (Task tool) |
-| **code-analyzer** | Review interpretation | Subagent (Task tool) |
-| **final-validator** | Pre-merge validation | Subagent (Task tool) |
-| **Monitor scripts** | Runner status | Docker log tailing (blocking) |
-| **Memory system** | State & context | CLAUDE.md + JSON files |
+| Component | Purpose | How It Works |
+|-----------|---------|--------------|
+| **techLEAD Orchestrator** | Main decision-making engine | Runs in your Claude Code session, coordinates all other components, makes strategic decisions |
+| **@claude runner** | Code implementation | GitHub Actions runner that receives guidance from techLEAD and writes actual code |
+| **@claude-review runner** | Code review | Auto-triggered on PR creation, analyzes code quality and security |
+| **test-builder** | Test creation | Local subagent that analyzes implementation and creates comprehensive tests |
+| **code-analyzer** | Review interpretation | Local subagent that categorizes review feedback by priority and provides fix guidance |
+| **final-validator** | Pre-merge validation | Local subagent that runs tests, linting, builds, and E2E tests before merge |
+| **Monitor scripts** | Real-time job tracking | Tail Docker logs to track GitHub Actions runner progress (for self-hosted runners) |
+| **Memory system** | Context & learning | CLAUDE.md + JSON state files that maintain project context across sessions |
 
 ---
 
