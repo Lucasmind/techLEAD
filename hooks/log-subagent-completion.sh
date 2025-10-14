@@ -2,6 +2,11 @@
 # SubagentStop hook
 # Logs subagent completion for tracking
 
+# Exit silently if not in a techLEAD project
+if [ ! -d ".techlead" ]; then
+    exit 0
+fi
+
 TIMESTAMP=$(date -Iseconds)
 AGENT_NAME="${1:-unknown}"
 

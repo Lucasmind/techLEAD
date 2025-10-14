@@ -2,6 +2,11 @@
 # PostToolUse hook for TodoWrite
 # Logs that state should be persisted
 
+# Exit silently if not in a techLEAD project
+if [ ! -d ".techlead" ]; then
+    exit 0
+fi
+
 TIMESTAMP=$(date -Iseconds)
 echo "[$TIMESTAMP] TodoWrite called - workflow state updated" >> .techlead/workflow_state.log
 
